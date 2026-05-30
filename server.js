@@ -34,7 +34,7 @@ connectDB().then(async () => {
   }
 });
 
-// Middleware
+// Middleware /
 app.use(cors());
 app.use(express.json());
 app.use(function (req, res, next) {
