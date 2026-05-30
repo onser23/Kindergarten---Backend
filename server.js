@@ -10,6 +10,8 @@ const authRoutes = require("./routes/auth");
 const nannyRoutes = require("./routes/nannies");
 const teacherRoutes = require("./routes/teachers");
 const groupRoutes = require("./routes/groups");
+const eventRoutes = require("./routes/events");
+const foodRoutes = require("./routes/foods");
 
 const app = express();
 
@@ -53,6 +55,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/nannies", require("./middleware/auth"), nannyRoutes);
 app.use("/api/teachers", require("./middleware/auth"), teacherRoutes);
 app.use("/api/groups", require("./middleware/auth"), groupRoutes);
+app.use("/api/events", require("./middleware/auth"), eventRoutes);
+app.use("/api/foods", require("./middleware/auth"), foodRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {
