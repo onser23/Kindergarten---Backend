@@ -8,7 +8,6 @@ const Admin = require("./models/Admin");
 // Route imports
 const authRoutes = require("./routes/auth");
 const nannyRoutes = require("./routes/nannies");
-const teacherRoutes = require("./routes/teachers");
 
 const app = express();
 
@@ -50,7 +49,6 @@ app.use(function (req, res, next) {
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/nannies", require("./middleware/auth"), nannyRoutes);
-app.use("/api/teachers", require("./middleware/auth"), teacherRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {
