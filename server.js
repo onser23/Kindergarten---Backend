@@ -1,13 +1,13 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const morgan = require('morgan');
-const connectDB = require('./config/db');
-const Admin = require('./models/Admin');
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+const morgan = require("morgan");
+const connectDB = require("./config/db");
+const Admin = require("./models/Admin");
 
 // Route imports
-const authRoutes = require('./routes/auth');
-const nannyRoutes = require('./routes/nannies');
+const authRoutes = require("./routes/auth");
+const nannyRoutes = require("./routes/nannies");
 
 const app = express();
 
@@ -15,48 +15,51 @@ const app = express();
 connectDB().then(async () => {
   // Startup: Default admin yoxla/yarat
   try {
-    const existingAdmin = await Admin.findOne({ username: 'admin' });
+    const existingAdmin = await Admin.findOne({ username: "admin" });
     if (!existingAdmin) {
       await Admin.create({
-        username: 'admin',
-        password: 'admin123',
-        fullName: 'Administrator',
-        email: 'admin@kindergarten.az',
-        phone: '+994501234567',
-        role: 'admin'
+        username: "admin",
+        password: "admin123",
+        fullName: "Administrator",
+        email: "admin@kindergarten.az",
+        phone: "+994501234567",
+        role: "admin",
       });
-      console.log('✅ Default admin yaradıldı (admin / admin123)');
+      console.log("✅ Default admin yaradıldı (admin / admin123)");
     } else {
-      console.log('✅ Admin mövcuddur:', existingAdmin.username);
+      console.log("✅ Admin mövcuddur:", existingAdmin.username);
     }
   } catch (error) {
-    console.error('❌ Startup admin yaratma xətası:', error.message);
+    console.error("❌ Startup admin yaratma xətası:", error.message);
   }
 });
 
 // Middleware
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  credentials: true
-}));
+app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(morgan('dev'));
+app.use(function (req, res, next) {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept",
+  );
+  next();
+});
 
 // Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/nannies', require('./middleware/auth'), nannyRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/nannies", require("./middleware/auth"), nannyRoutes);
 
 // Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Baxça İdarəetmə Sistemi API işləyir' });
+app.get("/api/health", (req, res) => {
+  res.json({ status: "OK", message: "Baxça İdarəetmə Sistemi API işləyir" });
 });
 
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({
     success: false,
-    message: 'Route tapılmadı'
+    message: "Route tapılmadı",
   });
 });
 
@@ -65,8 +68,8 @@ app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({
     success: false,
-    message: 'Daxili server xətası',
-    error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    message: "Daxili server xətası",
+    error: process.env.NODE_ENV === "development" ? err.message : undefined,
   });
 });
 
