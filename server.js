@@ -9,6 +9,7 @@ const Admin = require("./models/Admin");
 const authRoutes = require("./routes/auth");
 const nannyRoutes = require("./routes/nannies");
 const teacherRoutes = require("./routes/teachers");
+const groupRoutes = require("./routes/groups");
 
 const app = express();
 
@@ -35,7 +36,7 @@ connectDB().then(async () => {
   }
 });
 
-// Middleware /
+// Middleware
 app.use(cors());
 app.use(express.json());
 app.use(function (req, res, next) {
@@ -51,6 +52,7 @@ app.use(function (req, res, next) {
 app.use("/api/auth", authRoutes);
 app.use("/api/nannies", require("./middleware/auth"), nannyRoutes);
 app.use("/api/teachers", require("./middleware/auth"), teacherRoutes);
+app.use("/api/groups", require("./middleware/auth"), groupRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {
