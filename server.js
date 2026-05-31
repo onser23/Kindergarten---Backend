@@ -12,6 +12,7 @@ const teacherRoutes = require("./routes/teachers");
 const groupRoutes = require("./routes/groups");
 const eventRoutes = require("./routes/events");
 const foodRoutes = require("./routes/foods");
+const lessonRoutes = require("./routes/lessons");
 
 const app = express();
 
@@ -57,6 +58,7 @@ app.use("/api/teachers", require("./middleware/auth"), teacherRoutes);
 app.use("/api/groups", require("./middleware/auth"), groupRoutes);
 app.use("/api/events", require("./middleware/auth"), eventRoutes);
 app.use("/api/foods", require("./middleware/auth"), foodRoutes);
+app.use("/api/lessons", require("./middleware/auth"), lessonRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {
