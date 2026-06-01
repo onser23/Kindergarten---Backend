@@ -1,5 +1,7 @@
 const mongoose = require('mongoose');
 
+const DURATIONS = ['Bir aylıq tam gün', 'Bir aylıq yarım gün', 'Həftəlik tam gün', 'Həftəlik yarım gün', 'Günlük'];
+
 const packageSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -10,17 +12,22 @@ const packageSchema = new mongoose.Schema({
   services: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Service',
-    required: [true, 'Ən azı bir xidmət seçilməlidir']
+    default: []
   }],
   lessons: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Lesson',
-    required: [true, 'Ən azı bir dərs seçilməlidir']
+    default: []
   }],
   duration: {
     type: String,
-    enum: ['Bir aylıq tam gün', 'Bir aylıq yarım gün', 'Həftəlik tam gün', 'Həftəlik yarım gün', 'Günlük'],
+    enum: DURATIONS,
     required: [true, 'Müddət seçilməlidir']
+  },
+  days: {
+    type: Number,
+    required: [true, 'Gün sayı tələb olunur'],
+    min: [1, 'Gün sayı ən az 1 olmalıdır']
   },
   price: {
     type: Number,

@@ -15,6 +15,7 @@ const foodRoutes = require("./routes/foods");
 const lessonRoutes = require("./routes/lessons");
 const serviceRoutes = require("./routes/services");
 const packageRoutes = require("./routes/packages");
+const childRoutes = require("./routes/children");
 
 const app = express();
 
@@ -63,6 +64,7 @@ app.use("/api/foods", require("./middleware/auth"), foodRoutes);
 app.use("/api/lessons", require("./middleware/auth"), lessonRoutes);
 app.use("/api/services", require("./middleware/auth"), serviceRoutes);
 app.use("/api/packages", require("./middleware/auth"), packageRoutes);
+app.use("/api/children", require("./middleware/auth"), childRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {

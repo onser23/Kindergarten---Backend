@@ -7,6 +7,15 @@ const { body, validationResult } = require('express-validator');
 
 const DURATIONS = ['Bir aylıq tam gün', 'Bir aylıq yarım gün', 'Həftəlik tam gün', 'Həftəlik yarım gün', 'Günlük'];
 
+// Duration to days mapping
+const DURATION_DAYS = {
+  'Bir aylıq tam gün': 30,
+  'Bir aylıq yarım gün': 30,
+  'Həftəlik tam gün': 7,
+  'Həftəlik yarım gün': 7,
+  'Günlük': 1
+};
+
 // @route GET /api/packages
 // @desc Bütün paketləri gətir (axtarış ilə) - populate ilə xidmət və dərs adları
 // @access Private
@@ -79,8 +88,8 @@ router.get('/form-data', async (req, res) => {
 // @access Private
 router.post('/', [
   body('name').trim().notEmpty().withMessage('Paket adı tələb olunur'),
-  body('services').isArray({ min: 1 }).withMessage('Ən azı bir xidmət seçilməlidir'),
-  body('lessons').isArray({ min: 1 }).withMessage('Ən azı bir dərs seçilməlidir'),
+  body('services').optional().isArray().withMessage('Xidmətlər massiv olmalıdır'),
+  body('lessons').optional().isArray().withMessage('Dərslər massiv olmalıdır'),
   body('duration').isIn(DURATIONS).withMessage('Yanlış müddət seçimi'),
   body('price').isFloat({ min: 0 }).withMessage('Qiymət 0-dan böyük olmalıdır')
 ], async (req, res) => {
@@ -96,11 +105,15 @@ router.post('/', [
 
     const { name, services, lessons, duration, price } = req.body;
 
+    // Auto-calculate days from duration
+    const days = DURATION_DAYS[duration];
+
     const pkg = await Package.create({
       name: name.trim(),
-      services,
-      lessons,
+      services: services || [],
+      lessons: lessons || [],
       duration,
+      days,
       price: parseFloat(price)
     });
 
@@ -129,8 +142,8 @@ router.post('/', [
 // @access Private
 router.put('/:id', [
   body('name').optional().trim().notEmpty().withMessage('Paket adı boş ola bilməz'),
-  body('services').optional().isArray({ min: 1 }).withMessage('Ən azı bir xidmət seçilməlidir'),
-  body('lessons').optional().isArray({ min: 1 }).withMessage('Ən azı bir dərs seçilməlidir'),
+  body('services').optional().isArray().withMessage('Xidmətlər massiv olmalıdır'),
+  body('lessons').optional().isArray().withMessage('Dərslər massiv olmalıdır'),
   body('duration').optional().isIn(DURATIONS).withMessage('Yanlış müddət seçimi'),
   body('price').optional().isFloat({ min: 0 }).withMessage('Qiymət 0-dan böyük olmalıdır')
 ], async (req, res) => {
@@ -150,7 +163,11 @@ router.put('/:id', [
     if (name !== undefined) updateData.name = name.trim();
     if (services !== undefined) updateData.services = services;
     if (lessons !== undefined) updateData.lessons = lessons;
-    if (duration !== undefined) updateData.duration = duration;
+    if (duration !== undefined) {
+      updateData.duration = duration;
+      // Auto-recalculate days when duration changes
+      updateData.days = DURATION_DAYS[duration];
+    }
     if (price !== undefined) updateData.price = parseFloat(price);
 
     const pkg = await Package.findByIdAndUpdate(
