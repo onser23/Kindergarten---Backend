@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 const childSchema = new mongoose.Schema({
   firstName: {
@@ -41,6 +42,19 @@ const childSchema = new mongoose.Schema({
     match: [/^\+994[0-9]{9}$/, 'Düzgün Azərbaycan telefon nömrəsi daxil edin'],
     default: ''
   },
+  username: {
+    type: String,
+    required: [true, 'İstifadəçi adı tələb olunur'],
+    unique: true,
+    trim: true,
+    lowercase: true,
+    match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Düzgün email formatı daxil edin']
+  },
+  password: {
+    type: String,
+    required: [true, 'Şifrə tələb olunur'],
+    minlength: [6, 'Şifrə ən az 6 simvol olmalıdır']
+  },
   package: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Package',
@@ -65,11 +79,6 @@ const childSchema = new mongoose.Schema({
     default: 0,
     min: [0, 'Əlavə qiymət 0-dan kiçik ola bilməz']
   },
-  nannies: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Nanny',
-    default: []
-  }],
   notes: {
     type: String,
     trim: true,
@@ -90,29 +99,30 @@ const childSchema = new mongoose.Schema({
   }
 });
 
-// Virtual field for full name
-childSchema.virtual('fullName').get(function() {
-  return `${this.lastName} ${this.firstName}`;
-});
-
-// Virtual field for parent name (father first, then mother)
-childSchema.virtual('parentName').get(function() {
-  return this.fatherName || this.motherName || '-';
-});
-
-// Virtual field for payment calculation
-childSchema.virtual('payment').get(function() {
-  const pkgPrice = this.package?.price || 0;
-  return pkgPrice - (this.discount || 0) + (this.extraPrice || 0);
-});
-
-// Pre-save middleware to update updatedAt
-childSchema.pre('save', function(next) {
+// Hash password before saving
+childSchema.pre('save', async function(next) {
   this.updatedAt = Date.now();
+  if (!this.isModified('password')) return next();
+  this.password = await bcrypt.hash(this.password, 10);
   next();
 });
 
+// Hash password before updating
+childSchema.pre('findOneAndUpdate', async function(next) {
+  const update = this.getUpdate();
+  if (update.password) {
+    update.password = await bcrypt.hash(update.password, 10);
+  }
+  update.updatedAt = Date.now();
+  next();
+});
+
+// Compare password method
+childSchema.methods.comparePassword = async function(candidatePassword) {
+  return await bcrypt.compare(candidatePassword, this.password);
+};
+
 // Index for search
-childSchema.index({ firstName: 'text', lastName: 'text', fatherName: 'text', motherName: 'text' });
+childSchema.index({ firstName: 'text', lastName: 'text', fatherName: 'text', motherName: 'text', username: 'text' });
 
 module.exports = mongoose.model('Child', childSchema);

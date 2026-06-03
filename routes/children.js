@@ -24,7 +24,8 @@ router.get('/', async (req, res) => {
           { fatherName: searchRegex },
           { motherName: searchRegex },
           { phone1: searchRegex },
-          { phone2: searchRegex }
+          { phone2: searchRegex },
+          { username: searchRegex }
         ]
       };
     }
@@ -39,7 +40,6 @@ router.get('/', async (req, res) => {
           { path: 'nannies', select: 'firstName lastName fatherName' }
         ]
       })
-      .populate('nannies', 'firstName lastName fatherName')
       .sort({ createdAt: -1 });
 
     res.json({
@@ -97,12 +97,13 @@ router.post('/', [
   body('motherName').optional().trim(),
   body('phone1').matches(/^\+994[0-9]{9}$/).withMessage('Düzgün telefon nömrəsi daxil edin (məs: +994551234567)'),
   body('phone2').optional().matches(/^\+994[0-9]{9}$/).withMessage('Düzgün telefon nömrəsi daxil edin'),
+  body('username').isEmail().withMessage('Düzgün email formatı daxil edin').normalizeEmail(),
+  body('password').isLength({ min: 6 }).withMessage('Şifrə ən az 6 simvol olmalıdır'),
   body('package').notEmpty().withMessage('Paket seçilməlidir'),
   body('group').notEmpty().withMessage('Qrup seçilməlidir'),
   body('startDate').isISO8601().withMessage('Düzgün tarix formatı'),
   body('discount').optional().isFloat({ min: 0 }).withMessage('Endirim 0-dan kiçik ola bilməz'),
   body('extraPrice').optional().isFloat({ min: 0 }).withMessage('Əlavə qiymət 0-dan kiçik ola bilməz'),
-  body('nannies').optional().isArray(),
   body('notes').optional().trim()
 ], async (req, res) => {
   try {
@@ -115,11 +116,19 @@ router.post('/', [
       });
     }
 
+    // Check if username already exists
+    const existingChild = await Child.findOne({ username: req.body.username.toLowerCase() });
+    if (existingChild) {
+      return res.status(400).json({
+        success: false,
+        message: 'Bu email artıq istifadə edilir'
+      });
+    }
+
     const child = await Child.create({
       ...req.body,
       discount: parseFloat(req.body.discount || 0),
-      extraPrice: parseFloat(req.body.extraPrice || 0),
-      nannies: req.body.nannies || []
+      extraPrice: parseFloat(req.body.extraPrice || 0)
     });
 
     const populatedChild = await Child.findById(child._id)
@@ -131,8 +140,7 @@ router.post('/', [
           { path: 'teachers', select: 'firstName lastName fatherName' },
           { path: 'nannies', select: 'firstName lastName fatherName' }
         ]
-      })
-      .populate('nannies', 'firstName lastName fatherName');
+      });
 
     res.status(201).json({
       success: true,
@@ -160,12 +168,13 @@ router.put('/:id', [
   body('motherName').optional().trim(),
   body('phone1').optional().matches(/^\+994[0-9]{9}$/).withMessage('Düzgün telefon nömrəsi daxil edin'),
   body('phone2').optional().matches(/^\+994[0-9]{9}$/).withMessage('Düzgün telefon nömrəsi daxil edin'),
+  body('username').optional().isEmail().withMessage('Düzgün email formatı daxil edin').normalizeEmail(),
+  body('password').optional().isLength({ min: 6 }).withMessage('Şifrə ən az 6 simvol olmalıdır'),
   body('package').optional().notEmpty().withMessage('Paket seçilməlidir'),
   body('group').optional().notEmpty().withMessage('Qrup seçilməlidir'),
   body('startDate').optional().isISO8601().withMessage('Düzgün tarix formatı'),
   body('discount').optional().isFloat({ min: 0 }).withMessage('Endirim 0-dan kiçik ola bilməz'),
   body('extraPrice').optional().isFloat({ min: 0 }).withMessage('Əlavə qiymət 0-dan kiçik ola bilməz'),
-  body('nannies').optional().isArray(),
   body('notes').optional().trim()
 ], async (req, res) => {
   try {
@@ -178,9 +187,23 @@ router.put('/:id', [
       });
     }
 
-    const updateData = { updatedAt: Date.now() };
+    // Check if username already exists (excluding current child)
+    if (req.body.username) {
+      const existingChild = await Child.findOne({ 
+        username: req.body.username.toLowerCase(),
+        _id: { $ne: req.params.id }
+      });
+      if (existingChild) {
+        return res.status(400).json({
+          success: false,
+          message: 'Bu email artıq istifadə edilir'
+        });
+      }
+    }
+
+    const updateData = {};
     const fields = ['firstName', 'lastName', 'birthDate', 'fatherName', 'motherName', 
-                    'phone1', 'phone2', 'package', 'group', 'startDate', 'notes', 'nannies'];
+                    'phone1', 'phone2', 'username', 'password', 'package', 'group', 'startDate', 'notes'];
     fields.forEach(field => {
       if (req.body[field] !== undefined) updateData[field] = req.body[field];
     });
@@ -200,8 +223,7 @@ router.put('/:id', [
           { path: 'teachers', select: 'firstName lastName fatherName' },
           { path: 'nannies', select: 'firstName lastName fatherName' }
         ]
-      })
-      .populate('nannies', 'firstName lastName fatherName');
+      });
 
     if (!child) {
       return res.status(404).json({
