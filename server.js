@@ -56,6 +56,7 @@ app.use(function (req, res, next) {
 
 // Routes
 app.use("/api/auth", authRoutes);
+
 app.use("/api/nannies", require("./middleware/auth"), nannyRoutes);
 app.use("/api/teachers", require("./middleware/auth"), teacherRoutes);
 app.use("/api/groups", require("./middleware/auth"), groupRoutes);
@@ -64,7 +65,8 @@ app.use("/api/foods", require("./middleware/auth"), foodRoutes);
 app.use("/api/lessons", require("./middleware/auth"), lessonRoutes);
 app.use("/api/services", require("./middleware/auth"), serviceRoutes);
 app.use("/api/packages", require("./middleware/auth"), packageRoutes);
-app.use("/api/children", require("./middleware/auth"), childRoutes);
+
+app.use("/api/children", childRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {
