@@ -33,6 +33,7 @@ router.post(
 
       const { username, password } = req.body;
 
+      // Find child by username
       const child = await Child.findOne({
         username: username.toLowerCase(),
         isActive: true,
@@ -54,6 +55,7 @@ router.post(
         });
       }
 
+      // Compare password
       const isMatch = await child.comparePassword(password);
       if (!isMatch) {
         return res.status(401).json({
@@ -62,6 +64,7 @@ router.post(
         });
       }
 
+      // Generate JWT token
       const token = jwt.sign(
         {
           id: child._id,
@@ -72,6 +75,7 @@ router.post(
         { expiresIn: "30d" },
       );
 
+      // Remove password from response
       const childObj = child.toObject();
       delete childObj.password;
 
@@ -92,6 +96,7 @@ router.post(
   },
 );
 
+// Bütün aşağıdakı route-lar auth tələb edir
 router.use(auth);
 
 // @route GET /api/children/me
@@ -288,6 +293,7 @@ router.post(
         });
       }
 
+      // Check if username already exists
       const existingChild = await Child.findOne({
         username: req.body.username.toLowerCase(),
       });
@@ -298,20 +304,10 @@ router.post(
         });
       }
 
-      // Paketin qiymətini tap (currentDebt təyin etmək üçün)
-      const selectedPackage = await Package.findById(req.body.package);
-      if (!selectedPackage) {
-        return res.status(400).json({
-          success: false,
-          message: "Paket tapılmadı",
-        });
-      }
-
       const child = await Child.create({
         ...req.body,
         discount: parseFloat(req.body.discount || 0),
         extraPrice: parseFloat(req.body.extraPrice || 0),
-        currentDebt: selectedPackage.price,
       });
 
       const populatedChild = await Child.findById(child._id)
@@ -407,6 +403,7 @@ router.put(
         });
       }
 
+      // Check if username already exists (excluding current child)
       if (req.body.username) {
         const existingChild = await Child.findOne({
           username: req.body.username.toLowerCase(),
@@ -417,26 +414,6 @@ router.put(
             success: false,
             message: "Bu email artıq istifadə edilir",
           });
-        }
-      }
-
-      // Köhnə uşağı tap (paket dəyişikliyini yoxlamaq üçün)
-      const oldChild = await Child.findById(req.params.id);
-      if (!oldChild) {
-        return res.status(404).json({
-          success: false,
-          message: "Uşaq tapılmadı",
-        });
-      }
-
-      // Paket dəyişikliyi: yeni paketin qiyməti ilə köhnənin fərqini currentDebt-ə əlavə et
-      let debtDelta = 0;
-      let newPackage = null;
-      if (req.body.package && req.body.package !== oldChild.package.toString()) {
-        newPackage = await Package.findById(req.body.package);
-        const oldPackage = await Package.findById(oldChild.package);
-        if (newPackage && oldPackage) {
-          debtDelta = newPackage.price - oldPackage.price;
         }
       }
 
@@ -464,10 +441,6 @@ router.put(
       if (req.body.extraPrice !== undefined)
         updateData.extraPrice = parseFloat(req.body.extraPrice);
 
-      // currentDebt yenilə: köhnə borc + fərq (0-dan kiçik olmaz)
-      const newDebt = Math.max(0, (oldChild.currentDebt || 0) + debtDelta);
-      updateData.currentDebt = newDebt;
-
       const child = await Child.findByIdAndUpdate(req.params.id, updateData, {
         new: true,
         runValidators: true,
@@ -481,6 +454,13 @@ router.put(
             { path: "nannies", select: "firstName lastName fatherName" },
           ],
         });
+
+      if (!child) {
+        return res.status(404).json({
+          success: false,
+          message: "Uşaq tapılmadı",
+        });
+      }
 
       res.json({
         success: true,

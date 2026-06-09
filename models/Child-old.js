@@ -79,11 +79,6 @@ const childSchema = new mongoose.Schema({
     default: 0,
     min: [0, 'Əlavə qiymət 0-dan kiçik ola bilməz']
   },
-  currentDebt: {
-    type: Number,
-    default: 0,
-    min: [0, 'Cəri borc mənfi ola bilməz']
-  },
   notes: {
     type: String,
     trim: true,
@@ -104,6 +99,7 @@ const childSchema = new mongoose.Schema({
   }
 });
 
+// Hash password before saving
 childSchema.pre('save', async function(next) {
   this.updatedAt = Date.now();
   if (!this.isModified('password')) return next();
@@ -111,6 +107,7 @@ childSchema.pre('save', async function(next) {
   next();
 });
 
+// Hash password before updating
 childSchema.pre('findOneAndUpdate', async function(next) {
   const update = this.getUpdate();
   if (update.password) {
@@ -120,10 +117,12 @@ childSchema.pre('findOneAndUpdate', async function(next) {
   next();
 });
 
+// Compare password method
 childSchema.methods.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
+// Index for search
 childSchema.index({ firstName: 'text', lastName: 'text', fatherName: 'text', motherName: 'text', username: 'text' });
 
 module.exports = mongoose.model('Child', childSchema);

@@ -16,12 +16,12 @@ const lessonRoutes = require("./routes/lessons");
 const serviceRoutes = require("./routes/services");
 const packageRoutes = require("./routes/packages");
 const childRoutes = require("./routes/children");
-const paymentRoutes = require("./routes/payments");
 
 const app = express();
 
 // Database connection
 connectDB().then(async () => {
+  // Startup: Default admin yoxla/yarat
   try {
     const existingAdmin = await Admin.findOne({ username: "admin" });
     if (!existingAdmin) {
@@ -67,7 +67,6 @@ app.use("/api/services", require("./middleware/auth"), serviceRoutes);
 app.use("/api/packages", require("./middleware/auth"), packageRoutes);
 
 app.use("/api/children", childRoutes);
-app.use("/api/payments", require("./middleware/auth"), paymentRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {
