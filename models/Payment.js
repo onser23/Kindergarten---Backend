@@ -35,6 +35,11 @@ const paymentSchema = new mongoose.Schema({
     required: [true, 'Xidmət ayı tələb olunur'],
     match: [/^\d{4}-(0[1-9]|1[0-2])$/, 'Düzgün format: YYYY-MM (məs: 2026-03)']
   },
+  packageSnapshot: {
+    _id: { type: mongoose.Schema.Types.ObjectId, ref: 'Package' },
+    name: { type: String },
+    price: { type: Number }
+  },
   note: {
     type: String,
     trim: true,

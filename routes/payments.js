@@ -343,6 +343,12 @@ router.post('/', [
       });
     }
 
+    const packageSnapshot = child.package ? {
+      _id: child.package._id,
+      name: child.package.name,
+      price: child.package.price
+    } : null;
+
     const packagePrice = child.package?.price || 0;
     const disc = parseFloat(discount || 0);
     const extra = parseFloat(extraPrice || 0);
@@ -357,6 +363,7 @@ router.post('/', [
 
     const payment = await Payment.create([{
       child: childId,
+      packageSnapshot,
       amount,
       discount: disc,
       extraPrice: extra,
@@ -548,6 +555,7 @@ router.get('/export/csv', async (req, res) => {
 
     const headers = [
       'STATUS', 'ID', 'Ad', 'Soyad', 'Valideynlər', 'Paket',
+      'Paket (tarixi)',
       'Başlama Tarixi', 'Xidmət Ayı', 'Ödəniş Tarixi',
       'Endirim (₼)', 'Qiymətə Əlavə (₼)', 'Ödənilən Məbləğ (₼)',
       'Borc (₼)', 'Qalıq (₼)', 'Redaktə Səbəbi', 'Qeyd'
@@ -604,11 +612,13 @@ router.get('/export/csv', async (req, res) => {
         const c = p.child || {};
         const parents = [c.fatherName, c.motherName].filter(Boolean).join(', ');
         const qaliq = p.remainingAfter || 0;
+        const pkgName = p.packageSnapshot?.name || c.package?.name || '';
         rows.push([
           'Ödənilib',
           String(idx++).padStart(3, '0'),
           c.firstName || '', c.lastName || '', parents,
           c.package?.name || '',
+          pkgName,
           fmtDate(c.startDate),
           p.serviceMonth || '',
           fmtDate(p.paymentDate),
@@ -655,6 +665,7 @@ router.get('/export/csv', async (req, res) => {
           String(idx++).padStart(3, '0'),
           child.firstName, child.lastName, parents,
           child.package?.name || '',
+          '',
           fmtDate(child.startDate), '', '',
           '', '', '',
           child.currentDebt, '',
