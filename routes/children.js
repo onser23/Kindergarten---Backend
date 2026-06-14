@@ -137,8 +137,10 @@ router.get("/me", async (req, res) => {
 
 router.get("/", async (req, res) => {
   try {
-    const { search } = req.query;
-    let query = { isActive: true };
+    const { search, status = "active" } = req.query;
+    let query = {};
+    if (status === "active") query.isActive = true;
+    else if (status === "passive") query.isActive = false;
 
     if (search && search.trim()) {
       const searchRegex = new RegExp(search.trim(), "i");
@@ -476,34 +478,63 @@ router.put(
   },
 );
 
-router.delete("/:id", async (req, res) => {
-  try {
-    const child = await Child.findByIdAndUpdate(
-      req.params.id,
-      { isActive: false },
-      { new: true },
-    );
+router.patch(
+  "/:id/status",
+  [
+    body("isActive")
+      .isBoolean()
+      .withMessage("isActive boolean olmalıdır"),
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: "Validasiya xətası",
+          errors: errors.array(),
+        });
+      }
 
-    if (!child) {
-      return res.status(404).json({
+      const { isActive } = req.body;
+      const child = await Child.findByIdAndUpdate(
+        req.params.id,
+        { isActive },
+        { new: true, runValidators: true },
+      )
+        .populate("package", "name price days")
+        .populate({
+          path: "group",
+          select: "name departments",
+          populate: [
+            { path: "teachers", select: "firstName lastName fatherName" },
+            { path: "nannies", select: "firstName lastName fatherName" },
+          ],
+        });
+
+      if (!child) {
+        return res.status(404).json({
+          success: false,
+          message: "Uşaq tapılmadı",
+        });
+      }
+
+      res.json({
+        success: true,
+        message: isActive
+          ? "Uşaq uğurla aktivləşdirildi"
+          : "Uşaq uğurla passivləşdirildi",
+        data: child,
+      });
+    } catch (error) {
+      console.error("Status dəyişmə xətası:", error);
+      res.status(500).json({
         success: false,
-        message: "Uşaq tapılmadı",
+        message: "Server xətası",
+        error: error.message,
       });
     }
-
-    res.json({
-      success: true,
-      message: "Uşaq uğurla silindi",
-      data: child,
-    });
-  } catch (error) {
-    console.error("Uşaq silmə xətası:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server xətası",
-      error: error.message,
-    });
-  }
-});
+  },
+);
 
 module.exports = router;
