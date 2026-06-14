@@ -81,6 +81,10 @@ router.get('/preview', async (req, res) => {
         pending.push({ child, reason: 'debt', nextDue: new Date() });
         continue;
       }
+      if (child.currentDebt < 0) {
+        // Ailədə kredit qalığı var — baxça borcludur, ödəniş tələb olunmur
+        continue;
+      }
       const lastPayment = await Payment.findOne({ child: child._id, isActive: true })
         .sort({ paymentDate: -1 });
       const pkg = child.package;
@@ -221,6 +225,7 @@ router.get('/', async (req, res) => {
     for (const child of allChildren) {
       if (debtMin !== undefined && child.currentDebt < parseFloat(debtMin)) continue;
       if (debtMax !== undefined && child.currentDebt > parseFloat(debtMax)) continue;
+      if (child.currentDebt < 0) continue;
       if (child.currentDebt > 0) {
         pending.push({ child, reason: 'debt', nextDue: new Date() });
         continue;
@@ -297,7 +302,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // @route   POST /api/payments
-// @desc    Yeni ödəniş əlavə et
+// @desc    Yeni ödəniş əlavə et (overpayment/avans ödənişinə icazə verilir)
 // @access  Private
 router.post('/', [
   body('child').notEmpty().withMessage('Uşaq tələb olunur'),
@@ -328,7 +333,6 @@ router.post('/', [
     const { child: childId, discount, extraPrice, paidAmount, paymentDate, note } = req.body;
     const { serviceMonth } = req.body;
 
-    // Uşağı tap
     const child = await Child.findById(childId).populate('package', 'price name').session(session);
     if (!child || !child.isActive) {
       await session.abortTransaction();
@@ -345,24 +349,12 @@ router.post('/', [
     const amount = packagePrice + extra - disc;
     const paid = parseFloat(paidAmount);
 
-    // Real ödəniş: paid + endirim - əlavə
-    // Endirim sayəsində daha çox borc bağlanır, əlavə isə borcu artırır
     const realPayment = paid + disc - extra;
 
     const remainingBefore = child.currentDebt || 0;
+    // Mənfi qalıq = baxçanın ailəyə borcu (avans/kredit) — qəsdən dəstəklənir
     const remainingAfter = remainingBefore - realPayment;
 
-    // Real ödəniş cari borcdan çox ola bilməz
-    if (remainingAfter < 0) {
-      await session.abortTransaction();
-      session.endSession();
-      return res.status(400).json({
-        success: false,
-        message: `Real ödəniş (${realPayment} ₼) cari borcdan (${remainingBefore} ₼) çox ola bilməz`
-      });
-    }
-
-    // Payment yarat
     const payment = await Payment.create([{
       child: childId,
       amount,
@@ -376,7 +368,6 @@ router.post('/', [
       remainingAfter
     }], { session });
 
-    // Child.currentDebt yenilə
     child.currentDebt = remainingAfter;
     await child.save({ session });
 
@@ -392,7 +383,9 @@ router.post('/', [
 
     res.status(201).json({
       success: true,
-      message: 'Ödəniş uğurla əlavə edildi',
+      message: remainingAfter < 0
+        ? `Ödəniş uğurla əlavə edildi (avans: ${Math.abs(remainingAfter)} ₼)`
+        : 'Ödəniş uğurla əlavə edildi',
       data: populatedPayment
     });
   } catch (error) {
@@ -408,7 +401,7 @@ router.post('/', [
 });
 
 // @route   PUT /api/payments/:id
-// @desc    Ödənişi redaktə et (mürəkkəb məntiqlə)
+// @desc    Ödənişi redaktə et (mürəkkəb məntiqlə, overpayment dəstəyi ilə)
 // @access  Private
 router.put('/:id', [
   body('paidAmount').optional().isFloat({ min: 0 }).withMessage('Ödənilən məbləğ düzgün deyil'),
@@ -438,7 +431,6 @@ router.put('/:id', [
       });
     }
 
-    // Köhnə payment-i tap
     const oldPayment = await Payment.findById(req.params.id).session(session);
     if (!oldPayment || !oldPayment.isActive) {
       await session.abortTransaction();
@@ -449,7 +441,6 @@ router.put('/:id', [
       });
     }
 
-    // Uşağı tap
     const child = await Child.findById(oldPayment.child)
       .populate('package', 'price name')
       .session(session);
@@ -462,10 +453,12 @@ router.put('/:id', [
       });
     }
 
-    // Köhnə ödənişi geri qaytar
-    child.currentDebt = (child.currentDebt || 0) + oldPayment.paidAmount;
+    // Köhnə ödənişi geri qaytar (real ödəniş: paidAmount + discount - extraPrice)
+    const oldRealPayment = (oldPayment.paidAmount || 0)
+      + (oldPayment.discount || 0)
+      - (oldPayment.extraPrice || 0);
+    child.currentDebt = (child.currentDebt || 0) + oldRealPayment;
 
-    // Yeni dəyərləri tətbiq et
     const newDiscount = req.body.discount !== undefined ? parseFloat(req.body.discount) : oldPayment.discount;
     const newExtraPrice = req.body.extraPrice !== undefined ? parseFloat(req.body.extraPrice) : oldPayment.extraPrice;
     const newPaidAmount = req.body.paidAmount !== undefined ? parseFloat(req.body.paidAmount) : oldPayment.paidAmount;
@@ -476,23 +469,12 @@ router.put('/:id', [
     const packagePrice = child.package?.price || 0;
     const newAmount = packagePrice + newExtraPrice - newDiscount;
 
-    // Real ödəniş: paid + endirim - əlavə
     const newRealPayment = newPaidAmount + newDiscount - newExtraPrice;
 
     const remainingBefore = child.currentDebt;
+    // Mənfi qalıq = baxçanın ailəyə borcu (avans/kredit) — qəsdən dəstəklənir
     const remainingAfter = remainingBefore - newRealPayment;
 
-    // Yoxlama: real ödəniş cari borcdan çox ola bilməz
-    if (remainingAfter < 0) {
-      await session.abortTransaction();
-      session.endSession();
-      return res.status(400).json({
-        success: false,
-        message: `Real ödəniş (${newRealPayment} ₼) cari borcdan (${remainingBefore} ₼) çox ola bilməz`
-      });
-    }
-
-    // Payment-i yenilə
     oldPayment.amount = newAmount;
     oldPayment.discount = newDiscount;
     oldPayment.extraPrice = newExtraPrice;
@@ -505,7 +487,6 @@ router.put('/:id', [
     oldPayment.updatedAt = Date.now();
     await oldPayment.save({ session });
 
-    // Child.currentDebt yenilə
     child.currentDebt = remainingAfter;
     await child.save({ session });
 
@@ -521,7 +502,9 @@ router.put('/:id', [
 
     res.json({
       success: true,
-      message: 'Ödəniş uğurla yeniləndi',
+      message: remainingAfter < 0
+        ? `Ödəniş uğurla yeniləndi (avans: ${Math.abs(remainingAfter)} ₼)`
+        : 'Ödəniş uğurla yeniləndi',
       data: populatedPayment
     });
   } catch (error) {
@@ -620,6 +603,7 @@ router.get('/export/csv', async (req, res) => {
       for (const p of payments) {
         const c = p.child || {};
         const parents = [c.fatherName, c.motherName].filter(Boolean).join(', ');
+        const qaliq = p.remainingAfter || 0;
         rows.push([
           'Ödənilib',
           String(idx++).padStart(3, '0'),
@@ -629,7 +613,7 @@ router.get('/export/csv', async (req, res) => {
           p.serviceMonth || '',
           fmtDate(p.paymentDate),
           p.discount || 0, p.extraPrice || 0, p.paidAmount || 0,
-          '', p.remainingAfter || 0,
+          '', qaliq < 0 ? `Avans: ${Math.abs(qaliq)}` : qaliq,
           p.updatedReason || '',
           p.note || ''
         ]);
@@ -649,6 +633,7 @@ router.get('/export/csv', async (req, res) => {
       }
       const allChildren = await Child.find(cq).populate('package', 'name days');
       for (const child of allChildren) {
+        if (child.currentDebt < 0) continue;
         if (debtMin !== undefined && child.currentDebt < parseFloat(debtMin)) continue;
         if (debtMax !== undefined && child.currentDebt > parseFloat(debtMax)) continue;
         const isDebt = child.currentDebt > 0;

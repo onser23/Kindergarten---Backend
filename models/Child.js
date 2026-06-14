@@ -81,8 +81,7 @@ const childSchema = new mongoose.Schema({
   },
   currentDebt: {
     type: Number,
-    default: 0,
-    min: [0, 'Cəri borc mənfi ola bilməz']
+    default: 0
   },
   notes: {
     type: String,

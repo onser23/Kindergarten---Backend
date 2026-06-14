@@ -8,9 +8,6 @@ const Nanny = require("../models/Nanny");
 const { body, validationResult } = require("express-validator");
 const jwt = require("jsonwebtoken");
 
-// @route POST /api/children/login
-// @desc Uşaq hesabına daxil ol
-// @access Public
 router.post(
   "/login",
   [
@@ -94,9 +91,6 @@ router.post(
 
 router.use(auth);
 
-// @route GET /api/children/me
-// @desc Cari uşağın məlumatlarını gətir (token ilə)
-// @access Private (Child only)
 router.get("/me", async (req, res) => {
   try {
     if (req.user.role !== "child") {
@@ -141,9 +135,6 @@ router.get("/me", async (req, res) => {
   }
 });
 
-// @route GET /api/children
-// @desc Bütün uşaqları gətir (axtarış ilə) - populate ilə əlaqəli məlumatlar
-// @access Private (Admin only)
 router.get("/", async (req, res) => {
   try {
     const { search } = req.query;
@@ -192,9 +183,6 @@ router.get("/", async (req, res) => {
   }
 });
 
-// @route GET /api/children/form-data
-// @desc Uşaq formu üçün paket, qrup və baxıcı siyahısını gətir
-// @access Private (Admin only)
 router.get("/form-data", async (req, res) => {
   try {
     const [packages, groups, nannies] = await Promise.all([
@@ -239,9 +227,6 @@ router.get("/form-data", async (req, res) => {
   }
 });
 
-// @route POST /api/children
-// @desc Yeni uşaq əlavə et
-// @access Private (Admin only)
 router.post(
   "/",
   [
@@ -298,7 +283,6 @@ router.post(
         });
       }
 
-      // Paketin qiymətini tap (currentDebt təyin etmək üçün)
       const selectedPackage = await Package.findById(req.body.package);
       if (!selectedPackage) {
         return res.status(400).json({
@@ -341,9 +325,6 @@ router.post(
   },
 );
 
-// @route PUT /api/children/:id
-// @desc Uşağı yenilə
-// @access Private (Admin only)
 router.put(
   "/:id",
   [
@@ -420,7 +401,6 @@ router.put(
         }
       }
 
-      // Köhnə uşağı tap (paket dəyişikliyini yoxlamaq üçün)
       const oldChild = await Child.findById(req.params.id);
       if (!oldChild) {
         return res.status(404).json({
@@ -429,7 +409,6 @@ router.put(
         });
       }
 
-      // Paket dəyişikliyi: yeni paketin qiyməti ilə köhnənin fərqini currentDebt-ə əlavə et
       let debtDelta = 0;
       let newPackage = null;
       if (req.body.package && req.body.package !== oldChild.package.toString()) {
@@ -464,9 +443,8 @@ router.put(
       if (req.body.extraPrice !== undefined)
         updateData.extraPrice = parseFloat(req.body.extraPrice);
 
-      // currentDebt yenilə: köhnə borc + fərq (0-dan kiçik olmaz)
-      const newDebt = Math.max(0, (oldChild.currentDebt || 0) + debtDelta);
-      updateData.currentDebt = newDebt;
+      // currentDebt yenilə: köhnə borc + fərq (mənfi ola bilər — ailədə kredit qalığı)
+      updateData.currentDebt = (oldChild.currentDebt || 0) + debtDelta;
 
       const child = await Child.findByIdAndUpdate(req.params.id, updateData, {
         new: true,
@@ -498,9 +476,6 @@ router.put(
   },
 );
 
-// @route DELETE /api/children/:id
-// @desc Uşağı sil (soft delete)
-// @access Private (Admin only)
 router.delete("/:id", async (req, res) => {
   try {
     const child = await Child.findByIdAndUpdate(
