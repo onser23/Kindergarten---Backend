@@ -484,6 +484,12 @@ router.patch(
     body("isActive")
       .isBoolean()
       .withMessage("isActive boolean olmalıdır"),
+    body("passiveReason")
+      .optional({ values: "falsy" })
+      .isString()
+      .trim()
+      .isLength({ min: 0, max: 500 })
+      .withMessage("Səbəb 500 simvoldan çox ola bilməz"),
   ],
   async (req, res) => {
     try {
@@ -496,10 +502,49 @@ router.patch(
         });
       }
 
-      const { isActive } = req.body;
-      const child = await Child.findByIdAndUpdate(
+      const { isActive, passiveReason } = req.body;
+      const child = await Child.findById(req.params.id);
+      if (!child) {
+        return res.status(404).json({
+          success: false,
+          message: "Uşaq tapılmadı",
+        });
+      }
+
+      const updateData = { isActive };
+
+      // YALNIZ passiv etmə zamanı (isActive: false) səbəb yoxlaması
+      if (isActive === false) {
+        if ((child.currentDebt || 0) > 0) {
+          // Borc varsa → səbəb məcburidir (min 5 simvol)
+          const trimmed = (passiveReason || "").trim();
+          if (trimmed.length < 5) {
+            return res.status(400).json({
+              success: false,
+              message:
+                "Açıq borcu olan uşağı passiv etmək üçün səbəb yazılmalıdır (min 5 simvol)",
+              requiresReason: true,
+              currentDebt: child.currentDebt,
+            });
+          }
+          updateData.passiveReason = trimmed;
+          updateData.passiveDate = new Date();
+          updateData.passiveDebt = child.currentDebt;
+        } else {
+          // Borc yoxdursa → səbəb optional
+          const trimmed = (passiveReason || "").trim();
+          if (trimmed.length > 0) {
+            updateData.passiveReason = trimmed;
+            updateData.passiveDate = new Date();
+            updateData.passiveDebt = child.currentDebt;
+          }
+        }
+      }
+      // isActive: true (reaktiv) → heç bir reason field-i toxunulmur (tarixçə qorunur)
+
+      const updated = await Child.findByIdAndUpdate(
         req.params.id,
-        { isActive },
+        updateData,
         { new: true, runValidators: true },
       )
         .populate("package", "name price days")
@@ -512,19 +557,12 @@ router.patch(
           ],
         });
 
-      if (!child) {
-        return res.status(404).json({
-          success: false,
-          message: "Uşaq tapılmadı",
-        });
-      }
-
       res.json({
         success: true,
         message: isActive
           ? "Uşaq uğurla aktivləşdirildi"
           : "Uşaq uğurla passivləşdirildi",
-        data: child,
+        data: updated,
       });
     } catch (error) {
       console.error("Status dəyişmə xətası:", error);
