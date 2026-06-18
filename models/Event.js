@@ -41,7 +41,7 @@ const eventSchema = new mongoose.Schema({
   },
 });
 
-// Pre-save middleware to update updatedAt AA
+// Pre-save middleware to update updatedAt AAaa
 eventSchema.pre("save", function (next) {
   this.updatedAt = Date.now();
   next();
