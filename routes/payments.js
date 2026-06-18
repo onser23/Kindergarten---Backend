@@ -63,7 +63,7 @@ router.get('/preview', async (req, res) => {
       const payments = await Payment.find({ isActive: true })
         .populate({
           path: 'child',
-          select: 'firstName lastName fatherName motherName startDate package',
+          select: 'firstName lastName fatherName motherName startDate package currentDebt',
           populate: [{ path: 'package', select: 'name price' }]
         })
         .sort({ paymentDate: -1, createdAt: -1 })
@@ -195,7 +195,7 @@ router.get('/', async (req, res) => {
         Payment.find(query)
           .populate({
             path: 'child',
-            select: 'firstName lastName fatherName motherName startDate package group',
+            select: 'firstName lastName fatherName motherName startDate package group currentDebt',
             populate: [
               { path: 'package', select: 'name price' },
               { path: 'group', select: 'name' }
@@ -274,7 +274,7 @@ router.get('/:id', async (req, res) => {
     const payment = await Payment.findById(req.params.id)
       .populate({
         path: 'child',
-        select: 'firstName lastName fatherName motherName startDate package',
+        select: 'firstName lastName fatherName motherName startDate package currentDebt',
         populate: [
           { path: 'package', select: 'name price' }
         ]
@@ -604,7 +604,7 @@ router.get('/export/csv', async (req, res) => {
       const payments = await Payment.find(q)
         .populate({
           path: 'child',
-          select: 'firstName lastName fatherName motherName startDate package',
+          select: 'firstName lastName fatherName motherName startDate package currentDebt',
           populate: [{ path: 'package', select: 'name' }]
         })
         .sort({ paymentDate: -1 });
@@ -623,7 +623,7 @@ router.get('/export/csv', async (req, res) => {
           p.serviceMonth || '',
           fmtDate(p.paymentDate),
           p.discount || 0, p.extraPrice || 0, p.paidAmount || 0,
-          '', qaliq < 0 ? `Avans: ${Math.abs(qaliq)}` : qaliq,
+          c.currentDebt ?? 0, qaliq < 0 ? `Avans: ${Math.abs(qaliq)}` : qaliq,
           p.updatedReason || '',
           p.note || ''
         ]);
