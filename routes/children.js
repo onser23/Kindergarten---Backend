@@ -430,6 +430,22 @@ router.put(
         }
       }
 
+      // nextDueDate məntiqi (paket dəyişikliyi)
+      let nextDueDate = oldChild.nextDueDate;
+      if (newPackage) {
+        const oldPackage = await Package.findById(oldChild.package);
+        if (newPackage.duration === 'Günlük') {
+          // Hər hansı → Günlük: clear
+          nextDueDate = null;
+        } else if (oldPackage && oldPackage.duration === 'Günlük' && newPackage.duration !== 'Günlük') {
+          // Günlük → Periodic: yeni period İNDİ başlayır
+          const d = new Date();
+          d.setDate(d.getDate() + (newPackage.days || 30));
+          nextDueDate = d;
+        }
+        // Else: Periodic → başqa Periodic: dəyişmir
+      }
+
       const updateData = {};
       const fields = [
         "firstName",
@@ -456,6 +472,7 @@ router.put(
 
       // currentDebt yenilə: köhnə borc + fərq (mənfi ola bilər — ailədə kredit qalığı)
       updateData.currentDebt = (oldChild.currentDebt || 0) + debtDelta;
+      updateData.nextDueDate = nextDueDate;
 
       const child = await Child.findByIdAndUpdate(req.params.id, updateData, {
         new: true,
