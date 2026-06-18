@@ -89,6 +89,20 @@ const childSchema = new mongoose.Schema({
     maxlength: [500, 'Qeyd 500 simvoldan çox ola bilməz'],
     default: ''
   },
+  passiveReason: {
+    type: String,
+    trim: true,
+    maxlength: [500, 'Səbəb 500 simvoldan çox ola bilməz'],
+    default: ''
+  },
+  passiveDate: {
+    type: Date,
+    default: null
+  },
+  passiveDebt: {
+    type: Number,
+    default: null
+  },
   isActive: {
     type: Boolean,
     default: true
