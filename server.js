@@ -17,6 +17,7 @@ const serviceRoutes = require("./routes/services");
 const packageRoutes = require("./routes/packages");
 const childRoutes = require("./routes/children");
 const paymentRoutes = require("./routes/payments");
+const cronRoutes = require("./routes/cron");
 
 const app = express();
 
@@ -68,6 +69,7 @@ app.use("/api/packages", require("./middleware/auth"), packageRoutes);
 
 app.use("/api/children", childRoutes);
 app.use("/api/payments", require("./middleware/auth"), paymentRoutes);
+app.use("/api/cron", cronRoutes); // CRON_SECRET header ilə qorunur (auth tələb etmir)
 
 // Health check
 app.get("/api/health", (req, res) => {
