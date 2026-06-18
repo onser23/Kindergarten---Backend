@@ -1,15 +1,8 @@
 {
-  "version": 2,
-  "builds": [
+  "crons": [
     {
-      "src": "server.js",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/server.js"
+      "path": "/api/cron/sync-due-dates",
+      "schedule": "0 8 * * *"
     }
   ]
 }
