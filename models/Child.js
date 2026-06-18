@@ -89,6 +89,10 @@ const childSchema = new mongoose.Schema({
     maxlength: [500, 'Qeyd 500 simvoldan çox ola bilməz'],
     default: ''
   },
+  nextDueDate: {
+    type: Date,
+    default: null
+  },
   passiveReason: {
     type: String,
     trim: true,
