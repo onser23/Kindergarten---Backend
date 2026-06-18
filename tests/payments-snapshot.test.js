@@ -26,6 +26,7 @@ describe('Payment model — packageSnapshot', () => {
   beforeEach(async () => await setup.clear());
 
   it.skip('accepts packageSnapshot field as optional', async () => {
+    // SKIPPED: Mongoose 8/9 returns empty object {} instead of undefined for missing fields
     const childId = new mongoose.Types.ObjectId();
     const payment = new Payment({
       child: childId,
@@ -88,6 +89,7 @@ describe('POST /api/payments — packageSnapshot', () => {
   });
 
   it.skip('creates snapshot=null when child has no package', async () => {
+    // SKIPPED: Child schema requires package field; route saves child which fails validation
     // Child schema requires package, so we create one then null it via $unset
     // to simulate the edge case (e.g. after a package is deleted in admin)
     const orphanChild = await Child.create({

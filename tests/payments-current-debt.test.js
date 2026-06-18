@@ -28,7 +28,7 @@ describe('GET /api/payments?type=paid — child.currentDebt populate', () => {
   beforeEach(async () => {
     await setup.clear();
     pkg = await Package.create({ name: 'Həftəlik', price: 150, days: 7, duration: 'Həftəlik tam gün', isActive: true });
-    grp = await Group.create({ name: 'Q1', ageRange: '1-2', teachers: [], nannies: [], isActive: true });
+    grp = await Group.create({ name: 'Q1', ageRange: '1-2', teachers: [], nannies: [], departments: [], isActive: true });
     child = await Child.create({
       firstName: 'Veli', lastName: 'Veliyev', birthDate: new Date('2020-01-01'),
       phone1: '+994501234567',
@@ -62,7 +62,7 @@ describe('GET /api/payments/preview?type=paid — child.currentDebt populate', (
   beforeEach(async () => {
     await setup.clear();
     pkg = await Package.create({ name: 'Həftəlik', price: 150, days: 7, duration: 'Həftəlik tam gün', isActive: true });
-    grp = await Group.create({ name: 'Q2', ageRange: '1-2', teachers: [], nannies: [], isActive: true });
+    grp = await Group.create({ name: 'Q2', ageRange: '1-2', teachers: [], nannies: [], departments: [], isActive: true });
     child = await Child.create({
       firstName: 'Veli', lastName: 'Veliyev', birthDate: new Date('2020-01-01'),
       phone1: '+994501234567',
@@ -96,7 +96,7 @@ describe('GET /api/payments/:id — child.currentDebt populate', () => {
   beforeEach(async () => {
     await setup.clear();
     pkg = await Package.create({ name: 'Aylıq', price: 500, days: 30, duration: 'Bir aylıq tam gün', isActive: true });
-    grp = await Group.create({ name: 'Q3', ageRange: '1-2', teachers: [], nannies: [], isActive: true });
+    grp = await Group.create({ name: 'Q3', ageRange: '1-2', teachers: [], nannies: [], departments: [], isActive: true });
     child = await Child.create({
       firstName: 'Veli', lastName: 'Veliyev', birthDate: new Date('2020-01-01'),
       phone1: '+994501234567',
@@ -129,7 +129,7 @@ describe('GET /api/payments/export/csv?type=paid — child.currentDebt', () => {
   beforeEach(async () => {
     await setup.clear();
     pkg = await Package.create({ name: 'Həftəlik', price: 150, days: 7, duration: 'Həftəlik tam gün', isActive: true });
-    grp = await Group.create({ name: 'Q4', ageRange: '1-2', teachers: [], nannies: [], isActive: true });
+    grp = await Group.create({ name: 'Q4', ageRange: '1-2', teachers: [], nannies: [], departments: [], isActive: true });
     child = await Child.create({
       firstName: 'Veli', lastName: 'Veliyev', birthDate: new Date('2020-01-01'),
       phone1: '+994501234567',
