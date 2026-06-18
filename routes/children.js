@@ -293,11 +293,20 @@ router.post(
         });
       }
 
+      // nextDueDate hesabla (Günlük paket üçün null)
+      const startDateObj = new Date(req.body.startDate);
+      let nextDueDate = null;
+      if (selectedPackage.duration !== 'Günlük') {
+        nextDueDate = new Date(startDateObj);
+        nextDueDate.setDate(nextDueDate.getDate() + (selectedPackage.days || 30));
+      }
+
       const child = await Child.create({
         ...req.body,
         discount: parseFloat(req.body.discount || 0),
         extraPrice: parseFloat(req.body.extraPrice || 0),
         currentDebt: selectedPackage.price,
+        nextDueDate,
       });
 
       const populatedChild = await Child.findById(child._id)
