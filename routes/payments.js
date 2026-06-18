@@ -73,7 +73,7 @@ router.get('/preview', async (req, res) => {
 
     // type === 'pending'
     const allChildren = await Child.find({ isActive: true })
-      .populate('package', 'name price days');
+      .populate('package', 'name price days duration');
 
     const pending = [];
     for (const child of allChildren) {
@@ -85,13 +85,22 @@ router.get('/preview', async (req, res) => {
         // Ailədə kredit qalığı var — baxça borcludur, ödəniş tələb olunmur
         continue;
       }
-      const lastPayment = await Payment.findOne({ child: child._id, isActive: true })
-        .sort({ paymentDate: -1 });
       const pkg = child.package;
       if (!pkg) continue;
-      const lastDate = lastPayment ? lastPayment.paymentDate : child.startDate;
-      const nextDue = new Date(lastDate);
-      nextDue.setDate(nextDue.getDate() + (pkg.days || 30));
+      // Günlük paket üçün pending yaranmır
+      if (pkg.duration === 'Günlük') continue;
+      // nextDueDate field-ini istifadə et (varsa), yoxsa dinamik fallback
+      let nextDue;
+      if (child.nextDueDate) {
+        nextDue = new Date(child.nextDueDate);
+      } else {
+        // Fallback: legacy data üçün dinamik hesablama
+        const lastPayment = await Payment.findOne({ child: child._id, isActive: true })
+          .sort({ paymentDate: -1 });
+        const lastDate = lastPayment ? lastPayment.paymentDate : child.startDate;
+        nextDue = new Date(lastDate);
+        nextDue.setDate(nextDue.getDate() + (pkg.days || 30));
+      }
       const threeDaysBefore = new Date(nextDue);
       threeDaysBefore.setDate(threeDaysBefore.getDate() - 3);
       if (new Date() >= threeDaysBefore) {
@@ -220,7 +229,7 @@ router.get('/', async (req, res) => {
         { fatherName: re }, { motherName: re }
       ];
     }
-    const allChildren = await Child.find(childQuery).populate('package', 'name price days');
+    const allChildren = await Child.find(childQuery).populate('package', 'name price days duration');
     const pending = [];
     for (const child of allChildren) {
       if (debtMin !== undefined && child.currentDebt < parseFloat(debtMin)) continue;
@@ -232,14 +241,24 @@ router.get('/', async (req, res) => {
       }
       const pkg = child.package;
       if (!pkg) continue;
-      const lastP = await Payment.findOne({ child: child._id, isActive: true })
-        .sort({ paymentDate: -1 });
-      const last = lastP ? lastP.paymentDate : child.startDate;
-      const nd = new Date(last);
-      nd.setDate(nd.getDate() + (pkg.days || 30));
-      const tdb = new Date(nd); tdb.setDate(tdb.getDate() - 3);
+      // Günlük paket üçün pending yaranmır
+      if (pkg.duration === 'Günlük') continue;
+      // nextDueDate field-ini istifadə et (varsa), yoxsa dinamik fallback
+      let nextDue;
+      if (child.nextDueDate) {
+        nextDue = new Date(child.nextDueDate);
+      } else {
+        // Fallback: legacy data üçün dinamik hesablama
+        const lastP = await Payment.findOne({ child: child._id, isActive: true })
+          .sort({ paymentDate: -1 });
+        const last = lastP ? lastP.paymentDate : child.startDate;
+        nextDue = new Date(last);
+        nextDue.setDate(nextDue.getDate() + (pkg.days || 30));
+      }
+      const tdb = new Date(nextDue);
+      tdb.setDate(tdb.getDate() - 3);
       if (new Date() >= tdb) {
-        pending.push({ child, reason: 'due', nextDue: nd });
+        pending.push({ child, reason: 'due', nextDue });
       }
     }
     pending.sort((a, b) => {
@@ -333,7 +352,7 @@ router.post('/', [
     const { child: childId, discount, extraPrice, paidAmount, paymentDate, note } = req.body;
     const { serviceMonth } = req.body;
 
-    const child = await Child.findById(childId).populate('package', 'price name').session(session);
+    const child = await Child.findById(childId).populate('package', 'price name days duration').session(session);
     if (!child || !child.isActive) {
       await session.abortTransaction();
       session.endSession();
@@ -376,6 +395,14 @@ router.post('/', [
     }], { session });
 
     child.currentDebt = remainingAfter;
+    // nextDueDate advance et (Günlük paket üçün null)
+    if (child.package && child.package.duration === 'Günlük') {
+      child.nextDueDate = null;
+    } else if (child.package && child.package.days) {
+      const newNextDue = new Date(paymentDate);
+      newNextDue.setDate(newNextDue.getDate() + child.package.days);
+      child.nextDueDate = newNextDue;
+    }
     await child.save({ session });
 
     await session.commitTransaction();
@@ -449,7 +476,7 @@ router.put('/:id', [
     }
 
     const child = await Child.findById(oldPayment.child)
-      .populate('package', 'price name')
+      .populate('package', 'price name days duration')
       .session(session);
     if (!child) {
       await session.abortTransaction();
@@ -495,6 +522,14 @@ router.put('/:id', [
     await oldPayment.save({ session });
 
     child.currentDebt = remainingAfter;
+    // nextDueDate advance et (Günlük paket üçün null)
+    if (child.package && child.package.duration === 'Günlük') {
+      child.nextDueDate = null;
+    } else if (child.package && child.package.days) {
+      const newNextDue = new Date(newPaymentDate);
+      newNextDue.setDate(newNextDue.getDate() + child.package.days);
+      child.nextDueDate = newNextDue;
+    }
     await child.save({ session });
 
     await session.commitTransaction();
