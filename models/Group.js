@@ -25,7 +25,8 @@ const groupSchema = new mongoose.Schema({
   ageRange: {
     type: String,
     enum: ['1-2', '2-3', '3-4', '4-5', '5-6'],
-    required: [true, 'Yaş aralığı seçilməlidir']
+    required: [true, 'Yaş aralığı seçilməlidir'],
+    default: '1-2'
   },
   isActive: {
     type: Boolean,

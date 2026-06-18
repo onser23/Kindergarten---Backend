@@ -22,7 +22,8 @@ const packageSchema = new mongoose.Schema({
   duration: {
     type: String,
     enum: DURATIONS,
-    required: [true, 'Müddət seçilməlidir']
+    required: [true, 'Müddət seçilməlidir'],
+    default: 'Bir aylıq tam gün'
   },
   days: {
     type: Number,

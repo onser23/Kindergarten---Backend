@@ -29,7 +29,7 @@ describe('PUT /api/payments/:id — revert bug fix (2026-06-14)', () => {
     const pkg = await Package.create({
       name: 'Premium', price, days: 30, isActive: true
     });
-    const grp = await Group.create({ name: 'Q-Revert', isActive: true });
+    const grp = await Group.create({ name: 'Q-Revert', departments: [], teachers: [], nannies: [], ageRange: '1-2', isActive: true });
     const child = await Child.create({
       firstName: 'Veli', lastName: 'Veliyev', birthDate: new Date('2020-01-01'),
       phone1: '+994501234567',

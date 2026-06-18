@@ -27,7 +27,7 @@ describe('GET /api/payments/export/csv', () => {
 
   async function seed() {
     const pkg = await Package.create({ name: 'Standart', price: 360, days: 30, isActive: true });
-    const grp = await Group.create({ name: 'Q1', isActive: true });
+    const grp = await Group.create({ name: 'Q1', departments: [], teachers: [], nannies: [], ageRange: '1-2', isActive: true });
     const child = await Child.create({
       firstName: 'Eli', lastName: 'Eliyev', birthDate: new Date('2020-01-01'),
       phone1: '+994501234567',

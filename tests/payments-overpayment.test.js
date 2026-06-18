@@ -27,7 +27,7 @@ describe('Overpayment / Advance payment (2026-06-14)', () => {
 
   async function seedChild({ price = 150, currentDebt = 150 } = {}) {
     const pkg = await Package.create({ name: 'Premium', price, days: 30, isActive: true });
-    const grp = await Group.create({ name: 'Q-Overpay', isActive: true });
+    const grp = await Group.create({ name: 'Q-Overpay', departments: [], teachers: [], nannies: [], ageRange: '1-2', isActive: true });
     return Child.create({
       firstName: 'Veli', lastName: 'Veliyev', birthDate: new Date('2020-01-01'),
       phone1: '+994501234567',
@@ -92,7 +92,7 @@ describe('Overpayment / Advance payment (2026-06-14)', () => {
 
   it('PUT: allows editing to overpay (revert+apply cycle produces negative balance)', async () => {
     const pkg = await Package.create({ name: 'Premium', price: 150, days: 30, isActive: true });
-    const grp = await Group.create({ name: 'Q-Overpay-Edit', isActive: true });
+    const grp = await Group.create({ name: 'Q-Overpay-Edit', departments: [], teachers: [], nannies: [], ageRange: '1-2', isActive: true });
     const child = await Child.create({
       firstName: 'Veli', lastName: 'Veliyev', birthDate: new Date('2020-01-01'),
       phone1: '+994501234567',

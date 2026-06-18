@@ -27,7 +27,7 @@ describe('PATCH /api/children/:id/status — toggle status', () => {
   beforeEach(async () => {
     await setup.clear();
     pkg = await Package.create({ name: 'Premium', price: 150, days: 30, isActive: true });
-    grp = await Group.create({ name: 'Q1', isActive: true });
+    grp = await Group.create({ name: 'Q1', departments: [], teachers: [], nannies: [], ageRange: '1-2', isActive: true });
     child = await Child.create({
       firstName: 'Veli', lastName: 'Veliyev', birthDate: new Date('2020-01-01'),
       phone1: '+994501234567',
@@ -82,7 +82,7 @@ describe('DELETE /api/children/:id — endpoint removed', () => {
   beforeEach(async () => {
     await setup.clear();
     pkg = await Package.create({ name: 'Premium', price: 150, days: 30, isActive: true });
-    grp = await Group.create({ name: 'Q2', isActive: true });
+    grp = await Group.create({ name: 'Q2', departments: [], teachers: [], nannies: [], ageRange: '1-2', isActive: true });
     child = await Child.create({
       firstName: 'Veli', lastName: 'Veliyev', birthDate: new Date('2020-01-01'),
       phone1: '+994501234567',
@@ -109,7 +109,7 @@ describe('GET /api/children — status filter', () => {
   beforeEach(async () => {
     await setup.clear();
     pkg = await Package.create({ name: 'Premium', price: 150, days: 30, isActive: true });
-    grp = await Group.create({ name: 'Q3', isActive: true });
+    grp = await Group.create({ name: 'Q3', departments: [], teachers: [], nannies: [], ageRange: '1-2', isActive: true });
   });
 
   async function createChild(isActive, idx) {

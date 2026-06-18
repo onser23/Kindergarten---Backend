@@ -1,6 +1,17 @@
 const { MongoMemoryReplSet } = require('mongodb-memory-server');
 const mongoose = require('mongoose');
 
+require('../models/Teacher');
+require('../models/Nanny');
+require('../models/Group');
+require('../models/Package');
+require('../models/Child');
+require('../models/Payment');
+require('../models/Service');
+require('../models/Lesson');
+require('../models/Food');
+require('../models/Event');
+
 let mongoServer;
 
 module.exports = {
