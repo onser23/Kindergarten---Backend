@@ -289,4 +289,50 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// PUT /api/refunds/:id — Redaktə
+router.put('/:id', [
+  body('amount').optional().isFloat({ min: 0.01 }),
+  body('reason').optional().isString().trim().isLength({ min: 3, max: 500 }),
+  body('refundDate').optional().isISO8601(),
+  body('notes').optional().isString().trim().isLength({ max: 500 })
+], async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Yanlış id formatı' });
+    }
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+
+    const refund = await Refund.findById(req.params.id);
+    if (!refund || !refund.isActive) {
+      return res.status(404).json({ success: false, message: 'Aktiv refund tapılmadı' });
+    }
+
+    // Immutable: child, originalPayment, createdBy dəyişmir
+    if (req.body.amount !== undefined) refund.amount = req.body.amount;
+    if (req.body.reason !== undefined) refund.reason = req.body.reason;
+    if (req.body.refundDate !== undefined) refund.refundDate = req.body.refundDate;
+    if (req.body.notes !== undefined) refund.notes = req.body.notes;
+
+    await refund.save();
+
+    const populated = await Refund.findById(refund._id)
+      .populate('child', 'firstName lastName fatherName currentDebt isActive')
+      .populate('originalPayment', 'paidAmount paymentDate serviceMonth')
+      .populate('createdBy', 'username fullName');
+
+    res.json({ success: true, data: populated });
+  } catch (error) {
+    console.error('PUT /api/refunds/:id error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server xətası',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
