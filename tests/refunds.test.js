@@ -474,3 +474,92 @@ describe('GET /api/refunds/export/csv', () => {
     expect(res.text.split('\n').filter(l => l.trim()).length).toBe(1);
   });
 });
+
+describe('CRITICAL: refund does NOT change child.currentDebt', () => {
+  let pkg, grp;
+
+  beforeAll(async () => await setup.connect());
+  afterAll(async () => await setup.close());
+  beforeEach(async () => {
+    await setup.clear();
+    pkg = await Package.create({ name: 'Aylıq', price: 500, days: 30, duration: 'Bir aylıq tam gün', isActive: true });
+    grp = await Group.create({ name: 'Q1', ageRange: '1-2', teachers: [], nannies: [], departments: [], isActive: true });
+  });
+
+  it('currentDebt stays 0 when refund created for child with debt=0', async () => {
+    const child = await Child.create({
+      firstName: 'Əli', lastName: 'Əliyev', birthDate: new Date('2020-01-01'),
+      phone1: '+994501234567',
+      username: `ali-zero-${Date.now()}-${Math.random()}@test.com`,
+      password: 'pass123',
+      package: pkg._id, group: grp._id, startDate: new Date('2026-06-01'),
+      isActive: false,
+      currentDebt: 0
+    });
+
+    const res = await request(app)
+      .post('/api/refunds')
+      .send({
+        child: child._id.toString(),
+        amount: 300,
+        reason: 'Refund test',
+        refundDate: '2026-06-15T10:00:00.000Z'
+      });
+    expect(res.status).toBe(201);
+
+    // KRİTİK: currentDebt hələ də 0 olmalıdır
+    const updatedChild = await Child.findById(child._id);
+    expect(updatedChild.currentDebt).toBe(0);
+  });
+
+  it('currentDebt stays 250 when refund created for child with debt=250', async () => {
+    const child = await Child.create({
+      firstName: 'Vəli', lastName: 'Veliyev', birthDate: new Date('2020-01-01'),
+      phone1: '+994501234568',
+      username: `veli-debt-${Date.now()}-${Math.random()}@test.com`,
+      password: 'pass123',
+      package: pkg._id, group: grp._id, startDate: new Date('2026-06-01'),
+      isActive: false,
+      currentDebt: 250
+    });
+
+    const res = await request(app)
+      .post('/api/refunds')
+      .send({
+        child: child._id.toString(),
+        amount: 500,
+        reason: 'Böyük refund test',
+        refundDate: '2026-06-15T10:00:00.000Z'
+      });
+    expect(res.status).toBe(201);
+
+    // KRİTİK: currentDebt 250 qalmalıdır (500 refund etsək belə)
+    const updatedChild = await Child.findById(child._id);
+    expect(updatedChild.currentDebt).toBe(250);
+  });
+
+  it('currentDebt stays unchanged after multiple refunds for same child', async () => {
+    const child = await Child.create({
+      firstName: 'Test', lastName: 'Child', birthDate: new Date('2020-01-01'),
+      phone1: '+994501234570',
+      username: `test-multi-${Date.now()}-${Math.random()}@test.com`,
+      password: 'pass123',
+      package: pkg._id, group: grp._id, startDate: new Date('2026-06-01'),
+      isActive: false,
+      currentDebt: 100
+    });
+
+    await request(app).post('/api/refunds').send({
+      child: child._id.toString(), amount: 100, reason: 'First refund',
+      refundDate: '2026-06-15T10:00:00.000Z'
+    });
+    await request(app).post('/api/refunds').send({
+      child: child._id.toString(), amount: 200, reason: 'Second refund',
+      refundDate: '2026-06-16T10:00:00.000Z'
+    });
+
+    // KRİTİK: 2 refund-dan sonra da currentDebt hələ 100 qalmalıdır
+    const updatedChild = await Child.findById(child._id);
+    expect(updatedChild.currentDebt).toBe(100);
+  });
+});
