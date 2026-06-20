@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const { body, validationResult } = require('express-validator');
 const Refund = require('../models/Refund');
 const Child = require('../models/Child');
@@ -85,35 +86,69 @@ router.get('/', async (req, res) => {
       sort = 'refundDate', order = 'desc'
     } = req.query;
 
+    // childId validation
+    if (childId && !mongoose.isValidObjectId(childId)) {
+      return res.status(400).json({ success: false, message: 'Yanlış childId formatı' });
+    }
+
+    // Date validation
+    let dateFromObj = null, dateToObj = null;
+    if (dateFrom) {
+      dateFromObj = new Date(dateFrom);
+      if (isNaN(dateFromObj.getTime())) {
+        return res.status(400).json({ success: false, message: 'Yanlış dateFrom formatı' });
+      }
+    }
+    if (dateTo) {
+      dateToObj = new Date(dateTo);
+      if (isNaN(dateToObj.getTime())) {
+        return res.status(400).json({ success: false, message: 'Yanlış dateTo formatı' });
+      }
+      dateToObj.setHours(23, 59, 59, 999);
+    }
+
+    // NaN-safe numeric parsing with caps
+    const minAmountNum = minAmount ? parseFloat(minAmount) : null;
+    const maxAmountNum = maxAmount ? parseFloat(maxAmount) : null;
+    if (minAmount && isNaN(minAmountNum)) {
+      return res.status(400).json({ success: false, message: 'Yanlış minAmount formatı' });
+    }
+    if (maxAmount && isNaN(maxAmountNum)) {
+      return res.status(400).json({ success: false, message: 'Yanlış maxAmount formatı' });
+    }
+
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const lim = Math.min(100, Math.max(1, parseInt(limit, 10) || 15));
+
     let query = { isActive: true };
 
     if (childId) {
       query.child = childId;
     }
 
-    if (dateFrom || dateTo) {
+    if (dateFromObj || dateToObj) {
       query.refundDate = {};
-      if (dateFrom) query.refundDate.$gte = new Date(dateFrom);
-      if (dateTo) query.refundDate.$lte = new Date(dateTo);
+      if (dateFromObj) query.refundDate.$gte = dateFromObj;
+      if (dateToObj) query.refundDate.$lte = dateToObj;
     }
 
-    if (minAmount || maxAmount) {
+    if (minAmountNum !== null || maxAmountNum !== null) {
       query.amount = {};
-      if (minAmount) query.amount.$gte = parseFloat(minAmount);
-      if (maxAmount) query.amount.$lte = parseFloat(maxAmount);
+      if (minAmountNum !== null) query.amount.$gte = minAmountNum;
+      if (maxAmountNum !== null) query.amount.$lte = maxAmountNum;
     }
 
     if (serviceMonth) {
-      const payments = await Payment.find({ serviceMonth }).select('_id');
+      const payments = await Payment.find({ serviceMonth, isActive: true }).select('_id');
       const paymentIds = payments.map(p => p._id);
       if (paymentIds.length === 0) {
-        return res.json({ success: true, data: [], total: 0, page: 1, totalPages: 0 });
+        return res.json({ success: true, data: [], total: 0, page: pageNum, totalPages: 0 });
       }
       query.originalPayment = { $in: paymentIds };
     }
 
     if (search && search.trim()) {
-      const re = new RegExp(search.trim(), 'i');
+      const re = new RegExp(search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
       const children = await Child.find({
         $or: [
           { firstName: re }, { lastName: re },
@@ -122,7 +157,7 @@ router.get('/', async (req, res) => {
       }).select('_id');
       const childIds = children.map(c => c._id);
       if (childIds.length === 0) {
-        return res.json({ success: true, data: [], total: 0, page: 1, totalPages: 0 });
+        return res.json({ success: true, data: [], total: 0, page: pageNum, totalPages: 0 });
       }
       query.child = { $in: childIds };
     }
@@ -131,16 +166,16 @@ router.get('/', async (req, res) => {
     if (sort === 'amount') sortObj.amount = order === 'desc' ? -1 : 1;
     else sortObj.refundDate = order === 'desc' ? -1 : 1;
 
-    const pageNum = parseInt(page);
-    const lim = parseInt(limit);
-    const total = await Refund.countDocuments(query);
-    const refunds = await Refund.find(query)
-      .populate('child', 'firstName lastName fatherName motherName currentDebt isActive')
-      .populate('originalPayment', 'paidAmount paymentDate serviceMonth')
-      .populate('createdBy', 'username fullName')
-      .sort(sortObj)
-      .skip((pageNum - 1) * lim)
-      .limit(lim);
+    const [total, refunds] = await Promise.all([
+      Refund.countDocuments(query),
+      Refund.find(query)
+        .populate('child', 'firstName lastName fatherName motherName currentDebt isActive')
+        .populate('originalPayment', 'paidAmount paymentDate serviceMonth')
+        .populate('createdBy', 'username fullName')
+        .sort(sortObj)
+        .skip((pageNum - 1) * lim)
+        .limit(lim)
+    ]);
 
     res.json({
       success: true,
