@@ -3,6 +3,7 @@ const router = express.Router();
 const Event = require('../models/Event');
 const Group = require('../models/Group');
 const { body, validationResult } = require('express-validator');
+const { makeStatusHandler } = require('./shared/statusController');
 
 // @route   GET /api/events
 // @desc    Bütün tədbirləri gətir (axtarış ilə) - populate ilə qrup adları
@@ -193,37 +194,9 @@ router.put('/:id', [
   }
 });
 
-// @route   DELETE /api/events/:id
-// @desc    Tədbiri sil (soft delete)
+// @route   PATCH /api/events/:id/status
+// @desc    Tədbiri aktivləşdir / passivləşdir
 // @access  Private
-router.delete('/:id', async (req, res) => {
-  try {
-    const event = await Event.findByIdAndUpdate(
-      req.params.id,
-      { isActive: false },
-      { new: true }
-    );
-
-    if (!event) {
-      return res.status(404).json({
-        success: false,
-        message: 'Tədbir tapılmadı'
-      });
-    }
-
-    res.json({
-      success: true,
-      message: 'Tədbir uğurla silindi',
-      data: event
-    });
-  } catch (error) {
-    console.error('Tədbir silmə xətası:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server xətası',
-      error: error.message
-    });
-  }
-});
+router.patch('/:id/status', makeStatusHandler('event'));
 
 module.exports = router;
