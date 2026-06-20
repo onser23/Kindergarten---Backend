@@ -12,6 +12,7 @@ require('../models/Service');
 require('../models/Lesson');
 require('../models/Food');
 require('../models/Event');
+require('../models/Admin');
 
 let mongoServer;
 
