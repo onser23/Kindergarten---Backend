@@ -434,3 +434,43 @@ describe('DELETE /api/refunds/:id', () => {
     expect(res.body.data.length).toBe(0);
   });
 });
+
+describe('GET /api/refunds/export/csv', () => {
+  let pkg, grp, child, refund;
+
+  beforeAll(async () => await setup.connect());
+  afterAll(async () => await setup.close());
+  beforeEach(async () => {
+    await setup.clear();
+    pkg = await Package.create({ name: 'Aylıq', price: 500, days: 30, duration: 'Bir aylıq tam gün', isActive: true });
+    grp = await Group.create({ name: 'Q1', ageRange: '1-2', teachers: [], nannies: [], departments: [], isActive: true });
+    child = await Child.create({
+      firstName: 'Əli', lastName: 'Əliyev', birthDate: new Date('2020-01-01'),
+      phone1: '+994501234567',
+      username: `ali-${Date.now()}-${Math.random()}@test.com`,
+      password: 'pass123',
+      package: pkg._id, group: grp._id, startDate: new Date('2026-06-01'),
+      isActive: false
+    });
+    refund = await Refund.create({
+      child: child._id, amount: 300, reason: 'Test səbəb, dırnaq "içində"',
+      refundDate: new Date('2026-06-10'),
+      createdBy: new mongoose.Types.ObjectId()
+    });
+  });
+
+  it('exports refunds to CSV with UTF-8 BOM', async () => {
+    const res = await request(app).get('/api/refunds/export/csv');
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toMatch(/text\/csv/);
+    expect(res.text.charCodeAt(0)).toBe(0xFEFF);
+    expect(res.text).toMatch(/Əli/);
+    expect(res.text).toMatch(/Qaytarılan/);
+  });
+
+  it('respects dateFrom filter in CSV export', async () => {
+    const res = await request(app).get('/api/refunds/export/csv?dateFrom=2026-06-12');
+    expect(res.status).toBe(200);
+    expect(res.text.split('\n').filter(l => l.trim()).length).toBe(1);
+  });
+});

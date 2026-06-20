@@ -265,6 +265,119 @@ router.get('/form-data', async (req, res) => {
   }
 });
 
+// GET /api/refunds/export/csv — CSV export
+router.get('/export/csv', async (req, res) => {
+  try {
+    const { search, dateFrom, dateTo, serviceMonth, minAmount, maxAmount } = req.query;
+    let query = { isActive: true };
+
+    // Date validation (with end-of-day for dateTo)
+    let dateFromObj = null, dateToObj = null;
+    if (dateFrom) {
+      dateFromObj = new Date(dateFrom);
+      if (isNaN(dateFromObj.getTime())) {
+        return res.status(400).json({ success: false, message: 'Yanlış dateFrom formatı' });
+      }
+    }
+    if (dateTo) {
+      dateToObj = new Date(dateTo);
+      if (isNaN(dateToObj.getTime())) {
+        return res.status(400).json({ success: false, message: 'Yanlış dateTo formatı' });
+      }
+      dateToObj.setHours(23, 59, 59, 999);
+    }
+
+    if (dateFromObj || dateToObj) {
+      query.refundDate = {};
+      if (dateFromObj) query.refundDate.$gte = dateFromObj;
+      if (dateToObj) query.refundDate.$lte = dateToObj;
+    }
+
+    const minAmountNum = minAmount ? parseFloat(minAmount) : null;
+    const maxAmountNum = maxAmount ? parseFloat(maxAmount) : null;
+    if (minAmount && isNaN(minAmountNum)) {
+      return res.status(400).json({ success: false, message: 'Yanlış minAmount formatı' });
+    }
+    if (maxAmount && isNaN(maxAmountNum)) {
+      return res.status(400).json({ success: false, message: 'Yanlış maxAmount formatı' });
+    }
+    if (minAmountNum !== null || maxAmountNum !== null) {
+      query.amount = {};
+      if (minAmountNum !== null) query.amount.$gte = minAmountNum;
+      if (maxAmountNum !== null) query.amount.$lte = maxAmountNum;
+    }
+
+    if (serviceMonth) {
+      const payments = await Payment.find({ serviceMonth, isActive: true }).select('_id');
+      const paymentIds = payments.map(p => p._id);
+      if (paymentIds.length === 0) {
+        const emptyCsv = '\uFEFF' + ['ID', 'Uşaq', 'Məbləğ'].join(',') + '\n';
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename=refunds-${Date.now()}.csv`);
+        return res.send(emptyCsv);
+      }
+      query.originalPayment = { $in: paymentIds };
+    }
+
+    if (search && search.trim()) {
+      const re = new RegExp(search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      const children = await Child.find({
+        $or: [
+          { firstName: re }, { lastName: re },
+          { fatherName: re }, { motherName: re }
+        ]
+      }).select('_id');
+      const childIds = children.map(c => c._id);
+      if (childIds.length === 0) {
+        const emptyCsv = '\uFEFF' + ['ID', 'Uşaq', 'Məbləğ'].join(',') + '\n';
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename=refunds-${Date.now()}.csv`);
+        return res.send(emptyCsv);
+      }
+      query.child = { $in: childIds };
+    }
+
+    const refunds = await Refund.find(query)
+      .populate('child', 'firstName lastName fatherName motherName')
+      .populate('originalPayment', 'paidAmount paymentDate serviceMonth')
+      .populate('createdBy', 'username')
+      .sort({ refundDate: -1 });
+
+    let csv = '\uFEFF';
+    csv += [
+      'ID', 'Uşaq', 'Ata adı', 'Ana adı',
+      'Orijinal Ödəniş (₼)', 'Qaytarılan (₼)',
+      'Qaytarma Tarixi', 'Səbəb', 'Qeyd', 'Yaradan Admin'
+    ].join(',') + '\n';
+
+    for (const r of refunds) {
+      csv += [
+        r._id.toString(),
+        `"${(r.child?.lastName || '').replace(/"/g, '""')} ${(r.child?.firstName || '').replace(/"/g, '""')}"`,
+        `"${(r.child?.fatherName || '').replace(/"/g, '""')}"`,
+        `"${(r.child?.motherName || '').replace(/"/g, '""')}"`,
+        r.originalPayment?.paidAmount ?? '',
+        r.amount,
+        new Date(r.refundDate).toISOString().slice(0, 10),
+        `"${r.reason.replace(/"/g, '""')}"`,
+        `"${r.notes.replace(/"/g, '""')}"`,
+        r.createdBy?.username || ''
+      ].join(',') + '\n';
+    }
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename=refunds-${Date.now()}.csv`);
+    res.send(csv);
+  } catch (error) {
+    console.error('GET /api/refunds/export/csv error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server xətası',
+      error: error.message
+    });
+  }
+});
+
 // GET /api/refunds/:id — Tək refund
 router.get('/:id', async (req, res) => {
   try {
