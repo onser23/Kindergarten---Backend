@@ -4,6 +4,7 @@ const Package = require('../models/Package');
 const Service = require('../models/Service');
 const Lesson = require('../models/Lesson');
 const { body, validationResult } = require('express-validator');
+const { makeStatusHandler } = require('./shared/statusController');
 
 const DURATIONS = ['Bir aylıq tam gün', 'Bir aylıq yarım gün', 'Həftəlik tam gün', 'Həftəlik yarım gün', 'Günlük'];
 
@@ -200,37 +201,9 @@ router.put('/:id', [
   }
 });
 
-// @route DELETE /api/packages/:id
-// @desc Paketi sil (soft delete)
+// @route PATCH /api/packages/:id/status
+// @desc Paketi aktivləşdir / passivləşdir (istifadə yoxlaması ilə)
 // @access Private
-router.delete('/:id', async (req, res) => {
-  try {
-    const pkg = await Package.findByIdAndUpdate(
-      req.params.id,
-      { isActive: false },
-      { new: true }
-    );
-
-    if (!pkg) {
-      return res.status(404).json({
-        success: false,
-        message: 'Paket tapılmadı'
-      });
-    }
-
-    res.json({
-      success: true,
-      message: 'Paket uğurla silindi',
-      data: pkg
-    });
-  } catch (error) {
-    console.error('Paket silmə xətası:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server xətası',
-      error: error.message
-    });
-  }
-});
+router.patch('/:id/status', makeStatusHandler('package'));
 
 module.exports = router;
