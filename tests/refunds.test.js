@@ -188,4 +188,45 @@ describe('POST /api/refunds', () => {
       });
     expect(res.status).toBe(400);
   });
+
+  it('creates refund without originalPayment (optional)', async () => {
+    const res = await request(app)
+      .post('/api/refunds')
+      .send({
+        child: passiveChild._id.toString(),
+        amount: 200,
+        reason: 'Refund without original payment ref',
+        refundDate: '2026-06-15T10:00:00.000Z'
+      });
+    expect(res.status).toBe(201);
+    expect(res.body.data.originalPayment).toBeFalsy();
+  });
+
+  it('rejects refund with originalPayment from different child', async () => {
+    const Payment = require('../models/Payment');
+    const otherChild = await Child.create({
+      firstName: 'O', lastName: 'Other', birthDate: new Date('2020-01-01'),
+      phone1: '+994501234569',
+      username: `other-${Date.now()}-${Math.random()}@test.com`,
+      password: 'pass123',
+      package: pkg._id, group: grp._id, startDate: new Date('2026-06-01'),
+      isActive: false
+    });
+    const otherPayment = await Payment.create({
+      child: otherChild._id, amount: 100, paidAmount: 100,
+      paymentDate: new Date('2026-06-01'), serviceMonth: '2026-06',
+      remainingBefore: 100, remainingAfter: 0
+    });
+    const res = await request(app)
+      .post('/api/refunds')
+      .send({
+        child: passiveChild._id.toString(),
+        originalPayment: otherPayment._id.toString(),
+        amount: 100,
+        reason: 'Test',
+        refundDate: '2026-06-15T10:00:00.000Z'
+      });
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/bu uşağa aid deyil/);
+  });
 });
