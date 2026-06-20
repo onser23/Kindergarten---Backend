@@ -230,3 +230,56 @@ describe('POST /api/refunds', () => {
     expect(res.body.message).toMatch(/bu uşağa aid deyil/);
   });
 });
+
+describe('GET /api/refunds', () => {
+  let pkg, grp, child1, child2, refund1, refund2;
+
+  beforeAll(async () => await setup.connect());
+  afterAll(async () => await setup.close());
+  beforeEach(async () => {
+    await setup.clear();
+    pkg = await Package.create({ name: 'Aylıq', price: 500, days: 30, duration: 'Bir aylıq tam gün', isActive: true });
+    grp = await Group.create({ name: 'Q1', ageRange: '1-2', teachers: [], nannies: [], departments: [], isActive: true });
+    child1 = await Child.create({
+      firstName: 'Əli', lastName: 'Əliyev', birthDate: new Date('2020-01-01'),
+      phone1: '+994501234567',
+      username: `ali-${Date.now()}-${Math.random()}@test.com`,
+      password: 'pass123',
+      package: pkg._id, group: grp._id, startDate: new Date('2026-06-01'),
+      isActive: false
+    });
+    child2 = await Child.create({
+      firstName: 'Vəli', lastName: 'Veliyev', birthDate: new Date('2020-02-01'),
+      phone1: '+994501234568',
+      username: `veli-${Date.now()}-${Math.random()}@test.com`,
+      password: 'pass123',
+      package: pkg._id, group: grp._id, startDate: new Date('2026-06-01'),
+      isActive: false
+    });
+    refund1 = await Refund.create({
+      child: child1._id, amount: 300, reason: 'Əli refund',
+      refundDate: new Date('2026-06-10'),
+      createdBy: new mongoose.Types.ObjectId()
+    });
+    refund2 = await Refund.create({
+      child: child2._id, amount: 500, reason: 'Vəli refund',
+      refundDate: new Date('2026-06-15'),
+      createdBy: new mongoose.Types.ObjectId()
+    });
+  });
+
+  it('lists refunds with filter by childId', async () => {
+    const res = await request(app).get(`/api/refunds?childId=${child1._id.toString()}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data.length).toBe(1);
+    expect(res.body.data[0].amount).toBe(300);
+    expect(res.body.total).toBe(1);
+  });
+
+  it('lists refunds with date range filter', async () => {
+    const res = await request(app).get('/api/refunds?dateFrom=2026-06-12&dateTo=2026-06-20');
+    expect(res.status).toBe(200);
+    expect(res.body.data.length).toBe(1);
+    expect(res.body.data[0].amount).toBe(500);
+  });
+});
