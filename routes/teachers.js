@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Teacher = require('../models/Teacher');
 const { body, validationResult } = require('express-validator');
+const { makeStatusHandler } = require('./shared/statusController');
 
 // @route   GET /api/teachers
 // @desc    Bütün müəllimləri gətir (axtarış ilə)
@@ -162,37 +163,9 @@ router.put('/:id', [
   }
 });
 
-// @route   DELETE /api/teachers/:id
-// @desc    Müəllimi sil (soft delete)
+// @route   PATCH /api/teachers/:id/status
+// @desc    Müəllimi aktivləşdir / passivləşdir (istifadə yoxlaması ilə)
 // @access  Private
-router.delete('/:id', async (req, res) => {
-  try {
-    const teacher = await Teacher.findByIdAndUpdate(
-      req.params.id,
-      { isActive: false },
-      { new: true }
-    );
-
-    if (!teacher) {
-      return res.status(404).json({
-        success: false,
-        message: 'Müəllim tapılmadı'
-      });
-    }
-
-    res.json({
-      success: true,
-      message: 'Müəllim uğurla silindi',
-      data: teacher
-    });
-  } catch (error) {
-    console.error('Müəllim silmə xətası:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server xətası',
-      error: error.message
-    });
-  }
-});
+router.patch('/:id/status', makeStatusHandler('teacher'));
 
 module.exports = router;
