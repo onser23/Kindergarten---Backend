@@ -7,6 +7,7 @@ require('../models/Group');
 require('../models/Package');
 require('../models/Child');
 require('../models/Payment');
+require('../models/Refund');
 require('../models/Service');
 require('../models/Lesson');
 require('../models/Food');
