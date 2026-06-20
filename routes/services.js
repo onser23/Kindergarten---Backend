@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Service = require('../models/Service');
 const { body, validationResult } = require('express-validator');
+const { makeStatusHandler } = require('./shared/statusController');
 
 // @route GET /api/services
 // @desc Bütün xidmətləri gətir (axtarış ilə)
@@ -136,37 +137,9 @@ router.put('/:id', [
   }
 });
 
-// @route DELETE /api/services/:id
-// @desc Xidməti sil (soft delete)
+// @route PATCH /api/services/:id/status
+// @desc Xidməti aktivləşdir / passivləşdir (istifadə yoxlaması ilə)
 // @access Private
-router.delete('/:id', async (req, res) => {
-  try {
-    const service = await Service.findByIdAndUpdate(
-      req.params.id,
-      { isActive: false },
-      { new: true }
-    );
-
-    if (!service) {
-      return res.status(404).json({
-        success: false,
-        message: 'Xidmət tapılmadı'
-      });
-    }
-
-    res.json({
-      success: true,
-      message: 'Xidmət uğurla silindi',
-      data: service
-    });
-  } catch (error) {
-    console.error('Xidmət silmə xətası:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server xətası',
-      error: error.message
-    });
-  }
-});
+router.patch('/:id/status', makeStatusHandler('service'));
 
 module.exports = router;
