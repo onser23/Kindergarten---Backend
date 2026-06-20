@@ -397,3 +397,40 @@ describe('PUT /api/refunds/:id', () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe('DELETE /api/refunds/:id', () => {
+  let pkg, grp, child, refund;
+
+  beforeAll(async () => await setup.connect());
+  afterAll(async () => await setup.close());
+  beforeEach(async () => {
+    await setup.clear();
+    pkg = await Package.create({ name: 'Aylıq', price: 500, days: 30, duration: 'Bir aylıq tam gün', isActive: true });
+    grp = await Group.create({ name: 'Q1', ageRange: '1-2', teachers: [], nannies: [], departments: [], isActive: true });
+    child = await Child.create({
+      firstName: 'Əli', lastName: 'Əliyev', birthDate: new Date('2020-01-01'),
+      phone1: '+994501234567',
+      username: `ali-${Date.now()}-${Math.random()}@test.com`,
+      password: 'pass123',
+      package: pkg._id, group: grp._id, startDate: new Date('2026-06-01'),
+      isActive: false
+    });
+    refund = await Refund.create({
+      child: child._id, amount: 300, reason: 'Test',
+      refundDate: new Date('2026-06-10'),
+      createdBy: new mongoose.Types.ObjectId()
+    });
+  });
+
+  it('soft deletes refund', async () => {
+    const res = await request(app).delete(`/api/refunds/${refund._id}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data.isActive).toBe(false);
+  });
+
+  it('soft-deleted refund does not appear in GET list', async () => {
+    await request(app).delete(`/api/refunds/${refund._id}`);
+    const res = await request(app).get('/api/refunds');
+    expect(res.body.data.length).toBe(0);
+  });
+});

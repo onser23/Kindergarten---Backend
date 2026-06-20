@@ -335,4 +335,29 @@ router.put('/:id', [
   }
 });
 
+// DELETE /api/refunds/:id — Soft delete
+router.delete('/:id', async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Yanlış id formatı' });
+    }
+    const refund = await Refund.findById(req.params.id);
+    if (!refund || !refund.isActive) {
+      return res.status(404).json({ success: false, message: 'Aktiv refund tapılmadı' });
+    }
+
+    refund.isActive = false;
+    await refund.save();
+
+    res.json({ success: true, data: refund });
+  } catch (error) {
+    console.error('DELETE /api/refunds/:id error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server xətası',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
