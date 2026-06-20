@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Nanny = require('../models/Nanny');
 const { body, validationResult } = require('express-validator');
+const { makeStatusHandler } = require('./shared/statusController');
 
 // @route   GET /api/nannies
 // @desc    Bütün baxıcıları gətir (axtarış ilə)
@@ -156,37 +157,9 @@ router.put('/:id', [
   }
 });
 
-// @route   DELETE /api/nannies/:id
-// @desc    Baxıcını sil (soft delete)
+// @route   PATCH /api/nannies/:id/status
+// @desc    Baxıcını aktivləşdir / passivləşdir (istifadə yoxlaması ilə)
 // @access  Private
-router.delete('/:id', async (req, res) => {
-  try {
-    const nanny = await Nanny.findByIdAndUpdate(
-      req.params.id,
-      { isActive: false },
-      { new: true }
-    );
-
-    if (!nanny) {
-      return res.status(404).json({
-        success: false,
-        message: 'Baxıcı tapılmadı'
-      });
-    }
-
-    res.json({
-      success: true,
-      message: 'Baxıcı uğurla silindi',
-      data: nanny
-    });
-  } catch (error) {
-    console.error('Baxıcı silmə xətası:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server xətası',
-      error: error.message
-    });
-  }
-});
+router.patch('/:id/status', makeStatusHandler('nanny'));
 
 module.exports = router;
