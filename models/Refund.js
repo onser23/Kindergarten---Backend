@@ -4,8 +4,7 @@ const refundSchema = new mongoose.Schema({
   child: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Child',
-    required: [true, 'Uşaq tələb olunur'],
-    index: true
+    required: [true, 'Uşaq tələb olunur']
   },
   originalPayment: {
     type: mongoose.Schema.Types.ObjectId,
@@ -25,8 +24,7 @@ const refundSchema = new mongoose.Schema({
   },
   refundDate: {
     type: Date,
-    required: [true, 'Qaytarma tarixi tələb olunur'],
-    index: true
+    required: [true, 'Qaytarma tarixi tələb olunur']
   },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
