@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Food = require('../models/Food');
 const { body, validationResult } = require('express-validator');
+const { makeStatusHandler } = require('./shared/statusController');
 
 // @route   GET /api/foods
 // @desc    Bütün qidaları gətir (axtarış ilə)
@@ -154,37 +155,9 @@ router.put('/:id', [
   }
 });
 
-// @route   DELETE /api/foods/:id
-// @desc    Qida menyusunu sil (soft delete)
+// @route   PATCH /api/foods/:id/status
+// @desc    Qida menyusunu aktivləşdir / passivləşdir
 // @access  Private
-router.delete('/:id', async (req, res) => {
-  try {
-    const food = await Food.findByIdAndUpdate(
-      req.params.id,
-      { isActive: false },
-      { new: true }
-    );
-
-    if (!food) {
-      return res.status(404).json({
-        success: false,
-        message: 'Qida menyusu tapılmadı'
-      });
-    }
-
-    res.json({
-      success: true,
-      message: 'Qida menyusu uğurla silindi',
-      data: food
-    });
-  } catch (error) {
-    console.error('Qida silmə xətası:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server xətası',
-      error: error.message
-    });
-  }
-});
+router.patch('/:id/status', makeStatusHandler('food'));
 
 module.exports = router;
