@@ -268,6 +268,9 @@ router.get('/form-data', async (req, res) => {
 // GET /api/refunds/:id — Tək refund
 router.get('/:id', async (req, res) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Yanlış id formatı' });
+    }
     const refund = await Refund.findById(req.params.id)
       .populate('child', 'firstName lastName fatherName motherName currentDebt isActive passiveDate passiveReason')
       .populate('originalPayment')
