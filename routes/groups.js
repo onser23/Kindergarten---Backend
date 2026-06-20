@@ -4,6 +4,7 @@ const Group = require('../models/Group');
 const Teacher = require('../models/Teacher');
 const Nanny = require('../models/Nanny');
 const { body, validationResult } = require('express-validator');
+const { makeStatusHandler } = require('./shared/statusController');
 
 // @route   GET /api/groups
 // @desc    Bütün qrupları gətir (axtarış ilə) - populate ilə müəllim və baxıcı adları
@@ -209,37 +210,9 @@ router.put('/:id', [
   }
 });
 
-// @route   DELETE /api/groups/:id
-// @desc    Qrupu sil (soft delete)
+// @route   PATCH /api/groups/:id/status
+// @desc    Qrupu aktivləşdir / passivləşdir (istifadə yoxlaması ilə)
 // @access  Private
-router.delete('/:id', async (req, res) => {
-  try {
-    const group = await Group.findByIdAndUpdate(
-      req.params.id,
-      { isActive: false },
-      { new: true }
-    );
-
-    if (!group) {
-      return res.status(404).json({
-        success: false,
-        message: 'Qrup tapılmadı'
-      });
-    }
-
-    res.json({
-      success: true,
-      message: 'Qrup uğurla silindi',
-      data: group
-    });
-  } catch (error) {
-    console.error('Qrup silmə xətası:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server xətası',
-      error: error.message
-    });
-  }
-});
+router.patch('/:id/status', makeStatusHandler('group'));
 
 module.exports = router;
