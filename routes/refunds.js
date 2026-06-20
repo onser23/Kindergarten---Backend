@@ -194,4 +194,96 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET /api/refunds/by-child/:childId — Uşağın tarixçəsi
+router.get('/by-child/:childId', async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.childId)) {
+      return res.status(400).json({ success: false, message: 'Yanlış childId formatı' });
+    }
+    const refunds = await Refund.find({
+      child: req.params.childId,
+      isActive: true
+    })
+      .populate('originalPayment', 'paidAmount paymentDate serviceMonth')
+      .populate('createdBy', 'username fullName')
+      .sort({ refundDate: -1 });
+
+    const totalAmount = refunds.reduce((sum, r) => sum + r.amount, 0);
+
+    res.json({
+      success: true,
+      data: refunds,
+      totalAmount,
+      count: refunds.length
+    });
+  } catch (error) {
+    console.error('GET /api/refunds/by-child/:childId error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server xətası',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/refunds/form-data — Modal üçün passiv uşaqlar
+router.get('/form-data', async (req, res) => {
+  try {
+    const children = await Child.find({ isActive: false })
+      .populate('package', 'name price duration')
+      .select('firstName lastName fatherName motherName package passiveDate passiveReason currentDebt')
+      .sort({ firstName: 1 });
+
+    const childIds = children.map(c => c._id);
+    const payments = await Payment.find({
+      child: { $in: childIds },
+      isActive: true
+    })
+      .select('child paidAmount paymentDate serviceMonth packageSnapshot')
+      .sort({ paymentDate: -1 });
+
+    const paymentsByChild = {};
+    for (const c of children) {
+      paymentsByChild[c._id.toString()] = [];
+    }
+    for (const p of payments) {
+      const cid = p.child.toString();
+      paymentsByChild[cid].push(p);
+    }
+
+    res.json({
+      success: true,
+      data: { children, paymentsByChild }
+    });
+  } catch (error) {
+    console.error('GET /api/refunds/form-data error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server xətası',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/refunds/:id — Tək refund
+router.get('/:id', async (req, res) => {
+  try {
+    const refund = await Refund.findById(req.params.id)
+      .populate('child', 'firstName lastName fatherName motherName currentDebt isActive passiveDate passiveReason')
+      .populate('originalPayment')
+      .populate('createdBy', 'username fullName');
+    if (!refund) {
+      return res.status(404).json({ success: false, message: 'Refund tapılmadı' });
+    }
+    res.json({ success: true, data: refund });
+  } catch (error) {
+    console.error('GET /api/refunds/:id error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server xətası',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;

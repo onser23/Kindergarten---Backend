@@ -283,3 +283,66 @@ describe('GET /api/refunds', () => {
     expect(res.body.data[0].amount).toBe(500);
   });
 });
+
+describe('GET /api/refunds/:id and auxiliary endpoints', () => {
+  let pkg, grp, child, refund;
+
+  beforeAll(async () => await setup.connect());
+  afterAll(async () => await setup.close());
+  beforeEach(async () => {
+    await setup.clear();
+    pkg = await Package.create({ name: 'Aylıq', price: 500, days: 30, duration: 'Bir aylıq tam gün', isActive: true });
+    grp = await Group.create({ name: 'Q1', ageRange: '1-2', teachers: [], nannies: [], departments: [], isActive: true });
+    child = await Child.create({
+      firstName: 'Əli', lastName: 'Əliyev', birthDate: new Date('2020-01-01'),
+      phone1: '+994501234567',
+      username: `ali-${Date.now()}-${Math.random()}@test.com`,
+      password: 'pass123',
+      package: pkg._id, group: grp._id, startDate: new Date('2026-06-01'),
+      isActive: false
+    });
+    refund = await Refund.create({
+      child: child._id, amount: 300, reason: 'Test refund',
+      refundDate: new Date('2026-06-10'),
+      createdBy: new mongoose.Types.ObjectId()
+    });
+  });
+
+  it('GET /:id returns single refund with populated fields', async () => {
+    const res = await request(app).get(`/api/refunds/${refund._id}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data.amount).toBe(300);
+    expect(res.body.data.child.firstName).toBe('Əli');
+  });
+
+  it('GET /:id returns 404 for non-existent refund', async () => {
+    const fakeId = new mongoose.Types.ObjectId();
+    const res = await request(app).get(`/api/refunds/${fakeId}`);
+    expect(res.status).toBe(404);
+  });
+
+  it('GET /by-child/:childId returns child refund history with total', async () => {
+    const res = await request(app).get(`/api/refunds/by-child/${child._id}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data.length).toBe(1);
+    expect(res.body.totalAmount).toBe(300);
+    expect(res.body.count).toBe(1);
+  });
+
+  it('GET /form-data returns only passive children', async () => {
+    // Aktiv uşaq əlavə et (form-data-da görsənməməlidir)
+    await Child.create({
+      firstName: 'Aktiv', lastName: 'Uşaq', birthDate: new Date('2020-01-01'),
+      phone1: '+994501234599',
+      username: `aktiv-${Date.now()}-${Math.random()}@test.com`,
+      password: 'pass123',
+      package: pkg._id, group: grp._id, startDate: new Date('2026-06-01'),
+      isActive: true
+    });
+    const res = await request(app).get('/api/refunds/form-data');
+    expect(res.status).toBe(200);
+    expect(res.body.data.children.length).toBe(1);
+    expect(res.body.data.children[0].firstName).toBe('Əli');
+    expect(res.body.data.paymentsByChild[child._id.toString()]).toBeDefined();
+  });
+});
