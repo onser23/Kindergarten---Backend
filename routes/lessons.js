@@ -12,12 +12,11 @@ const { makeStatusHandler } = require('./shared/statusController');
 router.get('/', async (req, res) => {
   try {
     const { search } = req.query;
-    let query = { isActive: true };
+    let query = {};
 
     if (search && search.trim()) {
       const searchRegex = new RegExp(search.trim(), 'i');
       query = {
-        isActive: true,
         $or: [
           { name: searchRegex },
           { startTime: searchRegex },
