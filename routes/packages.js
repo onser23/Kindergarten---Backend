@@ -5,6 +5,7 @@ const Service = require('../models/Service');
 const Lesson = require('../models/Lesson');
 const { body, validationResult } = require('express-validator');
 const { makeStatusHandler } = require('./shared/statusController');
+const { parsePagination, buildPaginatedResponse } = require('../utils/pagination');
 
 const DURATIONS = ['Bir aylıq tam gün', 'Bir aylıq yarım gün', 'Həftəlik tam gün', 'Həftəlik yarım gün', 'Günlük'];
 
@@ -23,6 +24,7 @@ const DURATION_DAYS = {
 router.get('/', async (req, res) => {
   try {
     const { search } = req.query;
+    const { page, limit, skip } = parsePagination(req.query, 20);
     let query = {};
 
     if (search && search.trim()) {
@@ -35,16 +37,17 @@ router.get('/', async (req, res) => {
       };
     }
 
-    const packages = await Package.find(query)
-      .populate('services', 'name')
-      .populate('lessons', 'name')
-      .sort({ createdAt: -1 });
+    const [total, packages] = await Promise.all([
+      Package.countDocuments(query),
+      Package.find(query)
+        .populate('services', 'name')
+        .populate('lessons', 'name')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+    ]);
 
-    res.json({
-      success: true,
-      count: packages.length,
-      data: packages
-    });
+    res.json(buildPaginatedResponse(packages, total, page, limit));
   } catch (error) {
     console.error('Paketləri gətirmə xətası:', error);
     res.status(500).json({
