@@ -1,4 +1,5 @@
 const express = require("express");
+const { parsePagination, buildPaginatedResponse } = require("../utils/pagination");
 const router = express.Router();
 const auth = require("../middleware/auth");
 const Child = require("../models/Child");
@@ -138,6 +139,7 @@ router.get("/me", async (req, res) => {
 router.get("/", async (req, res) => {
   try {
     const { search, status = "active" } = req.query;
+    const { page, limit, skip } = parsePagination(req.query, 20);
     let query = {};
     if (status === "active") query.isActive = true;
     else if (status === "passive") query.isActive = false;
@@ -158,23 +160,24 @@ router.get("/", async (req, res) => {
       };
     }
 
-    const children = await Child.find(query)
-      .populate("package", "name price days")
-      .populate({
-        path: "group",
-        select: "name departments ageRange",
-        populate: [
-          { path: "teachers", select: "firstName lastName fatherName" },
-          { path: "nannies", select: "firstName lastName fatherName" },
-        ],
-      })
-      .sort({ createdAt: -1 });
+    const [total, children] = await Promise.all([
+      Child.countDocuments(query),
+      Child.find(query)
+        .populate("package", "name price days")
+        .populate({
+          path: "group",
+          select: "name departments ageRange",
+          populate: [
+            { path: "teachers", select: "firstName lastName fatherName" },
+            { path: "nannies", select: "firstName lastName fatherName" },
+          ],
+        })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+    ]);
 
-    res.json({
-      success: true,
-      count: children.length,
-      data: children,
-    });
+    res.json(buildPaginatedResponse(children, total, page, limit));
   } catch (error) {
     console.error("Uşaqları gətirmə xətası:", error);
     res.status(500).json({
