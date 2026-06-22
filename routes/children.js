@@ -8,6 +8,7 @@ const Group = require("../models/Group");
 const Nanny = require("../models/Nanny");
 const { body, validationResult } = require("express-validator");
 const jwt = require("jsonwebtoken");
+const { getNextDisplayId } = require("../utils/idGenerator");
 
 router.post(
   "/login",
@@ -304,8 +305,11 @@ router.post(
         nextDueDate.setDate(nextDueDate.getDate() + (selectedPackage.days || 30));
       }
 
+      const displayId = await getNextDisplayId('Child');
+
       const child = await Child.create({
         ...req.body,
+        displayId,
         discount: parseFloat(req.body.discount || 0),
         extraPrice: parseFloat(req.body.extraPrice || 0),
         currentDebt: selectedPackage.price,

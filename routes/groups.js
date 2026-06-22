@@ -6,6 +6,7 @@ const Nanny = require('../models/Nanny');
 const { body, validationResult } = require('express-validator');
 const { makeStatusHandler } = require('./shared/statusController');
 const { parsePagination, buildPaginatedResponse } = require('../utils/pagination');
+const { getNextDisplayId } = require('../utils/idGenerator');
 
 // @route   GET /api/groups
 // @desc    Bütün qrupları gətir (axtarış ilə) - populate ilə müəllim və baxıcı adları
@@ -113,12 +114,15 @@ router.post('/', [
       });
     }
 
+    const displayId = await getNextDisplayId('Group');
+
     const group = await Group.create({
       name: name.trim(),
       departments,
       teachers,
       nannies,
-      ageRange
+      ageRange,
+      displayId
     });
 
     // Populate edilmiş halda qaytar

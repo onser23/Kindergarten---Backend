@@ -5,6 +5,7 @@ const Payment = require('../models/Payment');
 const Child = require('../models/Child');
 const Package = require('../models/Package');
 const { body, validationResult } = require('express-validator');
+const { getNextDisplayId } = require('../utils/idGenerator');
 
 // @route   GET /api/payments/form-data
 // @desc    Ödəniş formu üçün uşaqlar siyahısını gətir
@@ -380,6 +381,8 @@ router.post('/', [
     // Mənfi qalıq = baxçanın ailəyə borcu (avans/kredit) — qəsdən dəstəklənir
     const remainingAfter = remainingBefore - realPayment;
 
+    const displayId = await getNextDisplayId('Payment');
+
     const payment = await Payment.create([{
       child: childId,
       packageSnapshot,
@@ -391,7 +394,8 @@ router.post('/', [
       serviceMonth,
       note: note || '',
       remainingBefore,
-      remainingAfter
+      remainingAfter,
+      displayId
     }], { session });
 
     child.currentDebt = remainingAfter;

@@ -4,6 +4,7 @@ const Nanny = require('../models/Nanny');
 const { body, validationResult } = require('express-validator');
 const { makeStatusHandler } = require('./shared/statusController');
 const { parsePagination, buildPaginatedResponse } = require('../utils/pagination');
+const { getNextDisplayId } = require('../utils/idGenerator');
 
 // @route   GET /api/nannies
 // @desc    Bütün baxıcıları gətir (axtarış ilə)
@@ -73,12 +74,15 @@ router.post('/', [
       });
     }
 
+    const displayId = await getNextDisplayId('Nanny');
+
     const nanny = await Nanny.create({
       firstName,
       lastName,
       fatherName,
       phone,
-      birthDate
+      birthDate,
+      displayId
     });
 
     res.status(201).json({

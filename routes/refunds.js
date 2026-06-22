@@ -4,6 +4,7 @@ const { body, validationResult } = require('express-validator');
 const Refund = require('../models/Refund');
 const Child = require('../models/Child');
 const Payment = require('../models/Payment');
+const { getNextDisplayId } = require('../utils/idGenerator');
 
 const router = express.Router();
 
@@ -50,6 +51,8 @@ router.post('/', [
       }
     }
 
+    const displayId = await getNextDisplayId('Refund');
+
     const refund = await Refund.create({
       child: child._id,
       originalPayment: originalPayment?._id || null,
@@ -57,7 +60,8 @@ router.post('/', [
       reason: req.body.reason,
       refundDate: req.body.refundDate,
       createdBy: req.user.id,
-      notes: req.body.notes || ''
+      notes: req.body.notes || '',
+      displayId
     });
 
     const populated = await Refund.findById(refund._id)

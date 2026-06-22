@@ -4,6 +4,7 @@ const Teacher = require('../models/Teacher');
 const { body, validationResult } = require('express-validator');
 const { makeStatusHandler } = require('./shared/statusController');
 const { parsePagination, buildPaginatedResponse } = require('../utils/pagination');
+const { getNextDisplayId } = require('../utils/idGenerator');
 
 // @route   GET /api/teachers
 // @desc    Bütün müəllimləri gətir (axtarış ilə)
@@ -76,13 +77,16 @@ router.post('/', [
       });
     }
 
+    const displayId = await getNextDisplayId('Teacher');
+
     const teacher = await Teacher.create({
       firstName,
       lastName,
       fatherName,
       departments,
       phone,
-      birthDate
+      birthDate,
+      displayId
     });
 
     res.status(201).json({

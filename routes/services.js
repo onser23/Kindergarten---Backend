@@ -4,6 +4,7 @@ const Service = require('../models/Service');
 const { body, validationResult } = require('express-validator');
 const { makeStatusHandler } = require('./shared/statusController');
 const { parsePagination, buildPaginatedResponse } = require('../utils/pagination');
+const { getNextDisplayId } = require('../utils/idGenerator');
 
 // @route GET /api/services
 // @desc Bütün xidmətləri gətir (axtarış ilə)
@@ -62,10 +63,13 @@ router.post('/', [
 
     const { name, days, startTime } = req.body;
 
+    const displayId = await getNextDisplayId('Service');
+
     const service = await Service.create({
       name: name.trim(),
       days,
-      startTime
+      startTime,
+      displayId
     });
 
     res.status(201).json({

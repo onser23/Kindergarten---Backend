@@ -4,6 +4,7 @@ const Food = require('../models/Food');
 const { body, validationResult } = require('express-validator');
 const { makeStatusHandler } = require('./shared/statusController');
 const { parsePagination, buildPaginatedResponse } = require('../utils/pagination');
+const { getNextDisplayId } = require('../utils/idGenerator');
 
 // @route   GET /api/foods
 // @desc    Bütün qidaları gətir (axtarış ilə)
@@ -70,6 +71,8 @@ router.post('/', [
 
     const { dryFood, soup, drink, dessert, fruit, days, time } = req.body;
 
+    const displayId = await getNextDisplayId('Food');
+
     const food = await Food.create({
       dryFood: dryFood || '',
       soup: soup || '',
@@ -77,7 +80,8 @@ router.post('/', [
       dessert: dessert || '',
       fruit: fruit || '',
       days,
-      time
+      time,
+      displayId
     });
 
     res.status(201).json({

@@ -6,6 +6,7 @@ const Teacher = require('../models/Teacher');
 const { body, validationResult } = require('express-validator');
 const { makeStatusHandler } = require('./shared/statusController');
 const { parsePagination, buildPaginatedResponse } = require('../utils/pagination');
+const { getNextDisplayId } = require('../utils/idGenerator');
 
 // @route GET /api/lessons
 // @desc Bütün dərsləri gətir (axtarış ilə) - populate ilə qrup və müəllim adları
@@ -105,13 +106,16 @@ router.post('/', [
 
     const { name, groups, days, startTime, duration, teachers } = req.body;
 
+    const displayId = await getNextDisplayId('Lesson');
+
     const lesson = await Lesson.create({
       name: name.trim(),
       groups,
       days,
       startTime,
       duration,
-      teachers
+      teachers,
+      displayId
     });
 
     // Populate edilmiş halda qaytar

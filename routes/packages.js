@@ -6,6 +6,7 @@ const Lesson = require('../models/Lesson');
 const { body, validationResult } = require('express-validator');
 const { makeStatusHandler } = require('./shared/statusController');
 const { parsePagination, buildPaginatedResponse } = require('../utils/pagination');
+const { getNextDisplayId } = require('../utils/idGenerator');
 
 const DURATIONS = ['Bir aylıq tam gün', 'Bir aylıq yarım gün', 'Həftəlik tam gün', 'Həftəlik yarım gün', 'Günlük'];
 
@@ -111,13 +112,16 @@ router.post('/', [
     // Auto-calculate days from duration
     const days = DURATION_DAYS[duration];
 
+    const displayId = await getNextDisplayId('Package');
+
     const pkg = await Package.create({
       name: name.trim(),
       services: services || [],
       lessons: lessons || [],
       duration,
       days,
-      price: parseFloat(price)
+      price: parseFloat(price),
+      displayId
     });
 
     // Populate edilmiş halda qaytar

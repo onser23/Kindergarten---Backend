@@ -5,6 +5,7 @@ const Group = require('../models/Group');
 const { body, validationResult } = require('express-validator');
 const { makeStatusHandler } = require('./shared/statusController');
 const { parsePagination, buildPaginatedResponse } = require('../utils/pagination');
+const { getNextDisplayId } = require('../utils/idGenerator');
 
 // @route   GET /api/events
 // @desc    Bütün tədbirləri gətir (axtarış ilə) - populate ilə qrup adları
@@ -103,12 +104,15 @@ router.post('/', [
       });
     }
 
+    const displayId = await getNextDisplayId('Event');
+
     const event = await Event.create({
       name: name.trim(),
       groups,
       startDate,
       startTime,
-      endDate
+      endDate,
+      displayId
     });
 
     // Populate edilmiş halda qaytar
