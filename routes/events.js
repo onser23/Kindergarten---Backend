@@ -4,6 +4,7 @@ const Event = require('../models/Event');
 const Group = require('../models/Group');
 const { body, validationResult } = require('express-validator');
 const { makeStatusHandler } = require('./shared/statusController');
+const { parsePagination, buildPaginatedResponse } = require('../utils/pagination');
 
 // @route   GET /api/events
 // @desc    Bütün tədbirləri gətir (axtarış ilə) - populate ilə qrup adları
@@ -11,6 +12,7 @@ const { makeStatusHandler } = require('./shared/statusController');
 router.get('/', async (req, res) => {
   try {
     const { search } = req.query;
+    const { page, limit, skip } = parsePagination(req.query, 20);
     let query = {};
 
     if (search && search.trim()) {
@@ -23,15 +25,16 @@ router.get('/', async (req, res) => {
       };
     }
 
-    const events = await Event.find(query)
-      .populate('groups', 'name')
-      .sort({ startDate: 1, startTime: 1 });
+    const [total, events] = await Promise.all([
+      Event.countDocuments(query),
+      Event.find(query)
+        .populate('groups', 'name')
+        .sort({ startDate: 1, startTime: 1 })
+        .skip(skip)
+        .limit(limit)
+    ]);
 
-    res.json({
-      success: true,
-      count: events.length,
-      data: events
-    });
+    res.json(buildPaginatedResponse(events, total, page, limit));
   } catch (error) {
     console.error('Tədbirləri gətirmə xətası:', error);
     res.status(500).json({
