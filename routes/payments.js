@@ -381,8 +381,6 @@ router.post('/', [
     // Mənfi qalıq = baxçanın ailəyə borcu (avans/kredit) — qəsdən dəstəklənir
     const remainingAfter = remainingBefore - realPayment;
 
-    const displayId = await getNextDisplayId('Payment');
-
     const payment = await Payment.create([{
       child: childId,
       packageSnapshot,
@@ -394,8 +392,7 @@ router.post('/', [
       serviceMonth,
       note: note || '',
       remainingBefore,
-      remainingAfter,
-      displayId
+      remainingAfter
     }], { session });
 
     child.currentDebt = remainingAfter;
@@ -411,6 +408,12 @@ router.post('/', [
 
     await session.commitTransaction();
     session.endSession();
+
+    // ✅ Counter increment olunur YALNIZ commit uğurlu olduqdan sonra
+    // (əvvəlki seq=5 commit-ə qədər artırılırdısa, transaction abort olsaydı
+    //  orphan seq qalırdı — yəni seq=6 heç bir Payment-ə aid deyildi)
+    const displayId = await getNextDisplayId('Payment');
+    await Payment.findByIdAndUpdate(payment[0]._id, { displayId }, { new: true });
 
     const populatedPayment = await Payment.findById(payment[0]._id)
       .populate({
