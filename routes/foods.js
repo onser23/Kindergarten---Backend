@@ -3,6 +3,7 @@ const router = express.Router();
 const Food = require('../models/Food');
 const { body, validationResult } = require('express-validator');
 const { makeStatusHandler } = require('./shared/statusController');
+const { parsePagination, buildPaginatedResponse } = require('../utils/pagination');
 
 // @route   GET /api/foods
 // @desc    Bütün qidaları gətir (axtarış ilə)
@@ -10,6 +11,7 @@ const { makeStatusHandler } = require('./shared/statusController');
 router.get('/', async (req, res) => {
   try {
     const { search } = req.query;
+    const { page, limit, skip } = parsePagination(req.query, 20);
     let query = {};
 
     if (search && search.trim()) {
@@ -27,13 +29,12 @@ router.get('/', async (req, res) => {
       };
     }
 
-    const foods = await Food.find(query).sort({ createdAt: -1 });
+    const [total, foods] = await Promise.all([
+      Food.countDocuments(query),
+      Food.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit)
+    ]);
 
-    res.json({
-      success: true,
-      count: foods.length,
-      data: foods
-    });
+    res.json(buildPaginatedResponse(foods, total, page, limit));
   } catch (error) {
     console.error('Qidaları gətirmə xətası:', error);
     res.status(500).json({
