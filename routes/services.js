@@ -3,6 +3,7 @@ const router = express.Router();
 const Service = require('../models/Service');
 const { body, validationResult } = require('express-validator');
 const { makeStatusHandler } = require('./shared/statusController');
+const { parsePagination, buildPaginatedResponse } = require('../utils/pagination');
 
 // @route GET /api/services
 // @desc Bütün xidmətləri gətir (axtarış ilə)
@@ -10,6 +11,7 @@ const { makeStatusHandler } = require('./shared/statusController');
 router.get('/', async (req, res) => {
   try {
     const { search } = req.query;
+    const { page, limit, skip } = parsePagination(req.query, 20);
     let query = {};
 
     if (search && search.trim()) {
@@ -23,13 +25,12 @@ router.get('/', async (req, res) => {
       };
     }
 
-    const services = await Service.find(query).sort({ startTime: 1 });
+    const [total, services] = await Promise.all([
+      Service.countDocuments(query),
+      Service.find(query).sort({ startTime: 1 }).skip(skip).limit(limit)
+    ]);
 
-    res.json({
-      success: true,
-      count: services.length,
-      data: services
-    });
+    res.json(buildPaginatedResponse(services, total, page, limit));
   } catch (error) {
     console.error('Xidmətləri gətirmə xətası:', error);
     res.status(500).json({
