@@ -27,19 +27,34 @@ const Counter = require('../models/Counter');
 async function migrateModel({ name, model }) {
   console.log(`\n=== ${name} ===`);
 
+  // C1 fix: Find max existing displayId from DB (crash-recovery safety)
+  const maxDocs = await model.aggregate([
+    { $match: { displayId: { $type: 'string' } } },
+    { $project: { num: { $toInt: '$displayId' } } },
+    { $sort: { num: -1 } },
+    { $limit: 1 },
+  ]);
+  const dbMax = maxDocs[0]?.num ?? 0;
+
+  // Also check Counter (may be higher from concurrent traffic)
+  const counterDoc = await Counter.findById(name);
+  const counterMax = counterDoc?.seq ?? 0;
+
+  // Start from max of all sources so re-runs never collide
+  let seq = Math.max(dbMax, counterMax);
+
   const docs = await model
     .find({ displayId: { $exists: false } })
     .sort({ createdAt: 1 })
     .lean();
 
   if (docs.length === 0) {
-    console.log(`  Skip: bütün dataların artıq displayId-si var.`);
+    console.log(`  Skip: bütün dataların artıq displayId-si var (seq: ${seq}).`);
     return;
   }
 
-  console.log(`  ${docs.length} data tapıldı, ID generasiya olunur...`);
+  console.log(`  ${docs.length} data tapıldı, ID generasiya olunur (seq başlanğıcı: ${seq + 1})...`);
 
-  let seq = 0;
   for (const doc of docs) {
     seq += 1;
     const displayId = String(seq).padStart(3, '0');
@@ -47,9 +62,10 @@ async function migrateModel({ name, model }) {
     console.log(`    ${doc._id} → ${displayId}`);
   }
 
+  // C2 fix: Use $max so Counter never decreases (concurrent-write safety)
   await Counter.findOneAndUpdate(
     { _id: name },
-    { $set: { seq } },
+    { $max: { seq } },
     { upsert: true }
   );
   console.log(`  Counter sinxronlaşdırıldı: ${name} → seq: ${seq}`);
