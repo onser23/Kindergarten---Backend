@@ -5,6 +5,7 @@ const Group = require('../models/Group');
 const Teacher = require('../models/Teacher');
 const { body, validationResult } = require('express-validator');
 const { makeStatusHandler } = require('./shared/statusController');
+const { parsePagination, buildPaginatedResponse } = require('../utils/pagination');
 
 // @route GET /api/lessons
 // @desc Bütün dərsləri gətir (axtarış ilə) - populate ilə qrup və müəllim adları
@@ -12,6 +13,7 @@ const { makeStatusHandler } = require('./shared/statusController');
 router.get('/', async (req, res) => {
   try {
     const { search } = req.query;
+    const { page, limit, skip } = parsePagination(req.query, 20);
     let query = {};
 
     if (search && search.trim()) {
@@ -25,16 +27,17 @@ router.get('/', async (req, res) => {
       };
     }
 
-    const lessons = await Lesson.find(query)
-      .populate('groups', 'name')
-      .populate('teachers', 'firstName lastName fatherName')
-      .sort({ startTime: 1 });
+    const [total, lessons] = await Promise.all([
+      Lesson.countDocuments(query),
+      Lesson.find(query)
+        .populate('groups', 'name')
+        .populate('teachers', 'firstName lastName fatherName')
+        .sort({ startTime: 1 })
+        .skip(skip)
+        .limit(limit)
+    ]);
 
-    res.json({
-      success: true,
-      count: lessons.length,
-      data: lessons
-    });
+    res.json(buildPaginatedResponse(lessons, total, page, limit));
   } catch (error) {
     console.error('Dərsləri gətirmə xətası:', error);
     res.status(500).json({
