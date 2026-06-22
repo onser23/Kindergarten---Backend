@@ -33,6 +33,13 @@ const lessonSchema = new mongoose.Schema({
     ref: 'Teacher',
     required: [true, 'Ən azı bir müəllim seçilməlidir']
   }],
+  displayId: {
+    type: String,
+    unique: true,
+    sparse: true,
+    index: true,
+    trim: true
+  },
   isActive: {
     type: Boolean,
     default: true

@@ -107,6 +107,13 @@ const childSchema = new mongoose.Schema({
     type: Number,
     default: null
   },
+  displayId: {
+    type: String,
+    unique: true,
+    sparse: true,
+    index: true,
+    trim: true
+  },
   isActive: {
     type: Boolean,
     default: true

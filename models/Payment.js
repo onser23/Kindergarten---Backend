@@ -54,6 +54,13 @@ const paymentSchema = new mongoose.Schema({
     maxlength: [500, 'Redaktə səbəbi 500 simvoldan çox ola bilməz'],
     default: ''
   },
+  displayId: {
+    type: String,
+    unique: true,
+    sparse: true,
+    index: true,
+    trim: true
+  },
   isActive: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }

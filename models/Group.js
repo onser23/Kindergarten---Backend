@@ -28,6 +28,13 @@ const groupSchema = new mongoose.Schema({
     required: [true, 'Yaş aralığı seçilməlidir'],
     default: '1-2'
   },
+  displayId: {
+    type: String,
+    unique: true,
+    sparse: true,
+    index: true,
+    trim: true
+  },
   isActive: {
     type: Boolean,
     default: true

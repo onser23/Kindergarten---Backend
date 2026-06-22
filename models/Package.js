@@ -35,6 +35,13 @@ const packageSchema = new mongoose.Schema({
     required: [true, 'Qiymət tələb olunur'],
     min: [0, 'Qiymət 0-dan böyük olmalıdır']
   },
+  displayId: {
+    type: String,
+    unique: true,
+    sparse: true,
+    index: true,
+    trim: true
+  },
   isActive: {
     type: Boolean,
     default: true

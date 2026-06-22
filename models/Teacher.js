@@ -34,6 +34,13 @@ const teacherSchema = new mongoose.Schema({
     type: Date,
     required: [true, 'Doğum tarixi tələb olunur']
   },
+  displayId: {
+    type: String,
+    unique: true,
+    sparse: true,
+    index: true,
+    trim: true
+  },
   isActive: {
     type: Boolean,
     default: true

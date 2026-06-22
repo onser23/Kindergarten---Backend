@@ -37,6 +37,13 @@ const refundSchema = new mongoose.Schema({
     maxlength: [500, 'Qeyd 500 simvoldan çox ola bilməz'],
     default: ''
   },
+  displayId: {
+    type: String,
+    unique: true,
+    sparse: true,
+    index: true,
+    trim: true
+  },
   isActive: {
     type: Boolean,
     default: true

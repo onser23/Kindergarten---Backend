@@ -41,6 +41,13 @@ const foodSchema = new mongoose.Schema({
     required: [true, 'Saat tələb olunur'],
     match: [/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Düzgün saat formatı (HH:MM)']
   },
+  displayId: {
+    type: String,
+    unique: true,
+    sparse: true,
+    index: true,
+    trim: true
+  },
   isActive: {
     type: Boolean,
     default: true
