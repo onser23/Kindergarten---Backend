@@ -3,6 +3,7 @@ const router = express.Router();
 const Nanny = require('../models/Nanny');
 const { body, validationResult } = require('express-validator');
 const { makeStatusHandler } = require('./shared/statusController');
+const { parsePagination, buildPaginatedResponse } = require('../utils/pagination');
 
 // @route   GET /api/nannies
 // @desc    Bütün baxıcıları gətir (axtarış ilə)
@@ -10,6 +11,7 @@ const { makeStatusHandler } = require('./shared/statusController');
 router.get('/', async (req, res) => {
   try {
     const { search } = req.query;
+    const { page, limit, skip } = parsePagination(req.query, 20);
     let query = {};
 
     if (search && search.trim()) {
@@ -24,13 +26,12 @@ router.get('/', async (req, res) => {
       };
     }
 
-    const nannies = await Nanny.find(query).sort({ createdAt: -1 });
+    const [total, nannies] = await Promise.all([
+      Nanny.countDocuments(query),
+      Nanny.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit)
+    ]);
 
-    res.json({
-      success: true,
-      count: nannies.length,
-      data: nannies
-    });
+    res.json(buildPaginatedResponse(nannies, total, page, limit));
   } catch (error) {
     console.error('Baxıcıları gətirmə xətası:', error);
     res.status(500).json({
