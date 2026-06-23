@@ -1,14 +1,19 @@
 const express = require('express');
 const router = express.Router();
-const mongoose = require('mongoose');
 const Payment = require('../models/Payment');
 
-const VALID_MODES = ['monthly', 'weekly', 'daily'];
-const MAX_RANGE_DAYS = { monthly: 365, weekly: 182, daily: 365 };
+const MAX_RANGE = {
+  monthly: { days: 365, label: '12 ay' },
+  weekly:  { days: 182, label: '26 həftə' },
+  daily:   { days: 365, label: '365 gün' },
+};
+const VALID_MODES = Object.keys(MAX_RANGE);
 
-function parseDate(s) {
+function parseDate(s, endOfDay = false) {
   const d = new Date(s);
-  return isNaN(d.getTime()) ? null : d;
+  if (isNaN(d.getTime())) return null;
+  if (endOfDay) d.setHours(23, 59, 59, 999);
+  return d;
 }
 
 function startOfMonth(d) {
@@ -48,10 +53,6 @@ function buildPeriodFormat(mode) {
   return '%Y-%m-%d';
 }
 
-function getMaxDays(mode) {
-  return { monthly: 365, weekly: 182, daily: 365 }[mode];
-}
-
 router.get('/revenue', async (req, res) => {
   try {
     const mode = req.query.mode;
@@ -61,7 +62,7 @@ router.get('/revenue', async (req, res) => {
 
     const defaults = defaultDates(mode);
     const dateFrom = req.query.dateFrom ? parseDate(req.query.dateFrom) : defaults.dateFrom;
-    const dateTo = req.query.dateTo ? parseDate(req.query.dateTo) : defaults.dateTo;
+    const dateTo = req.query.dateTo ? parseDate(req.query.dateTo, true) : defaults.dateTo;
 
     if (!dateFrom || !dateTo) {
       return res.status(400).json({ success: false, message: 'Düzgün tarix formatı daxil edin (YYYY-MM-DD)' });
@@ -70,13 +71,12 @@ router.get('/revenue', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Başlanğıc tarixi bitmə tarixindən böyük ola bilməz' });
     }
 
-    const maxDays = getMaxDays(mode);
+    const maxDays = MAX_RANGE[mode].days;
     const rangeDays = Math.ceil((dateTo - dateFrom) / 86400000);
     if (rangeDays > maxDays) {
-      const limits = { monthly: '12 ay', weekly: '26 həftə', daily: '365 gün' };
       return res.status(400).json({
         success: false,
-        message: `${mode.charAt(0).toUpperCase() + mode.slice(1)} rejimdə maksimum ${limits[mode]} aralığı seçilə bilər`,
+        message: `${mode.charAt(0).toUpperCase() + mode.slice(1)} rejimdə maksimum ${MAX_RANGE[mode].label} aralığı seçilə bilər`,
       });
     }
 
