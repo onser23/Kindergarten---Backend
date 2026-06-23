@@ -253,4 +253,70 @@ describe('GET /api/reports/revenue', () => {
       expect(res.body.data).toHaveLength(2);
     });
   });
+
+  describe('daily mode', () => {
+    it('groups multiple payments on same day', async () => {
+      const pkg = await Package.create({ name: 'P', price: 100, days: 30, isActive: true });
+      const grp = await Group.create({ name: 'G9', departments: [], teachers: [], nannies: [], ageRange: '3-4', isActive: true });
+      const c1 = await Child.create({
+        firstName: 'D1', lastName: 'D1', birthDate: new Date('2020-01-01'),
+        phone1: '+994501010101',
+        username: `d1-${Date.now()}@t.com`, password: 'pass123',
+        package: pkg._id, group: grp._id, startDate: new Date('2026-06-01'), currentDebt: 0,
+      });
+      const c2 = await Child.create({
+        firstName: 'D2', lastName: 'D2', birthDate: new Date('2020-01-01'),
+        phone1: '+994502020202',
+        username: `d2-${Date.now()}@t.com`, password: 'pass123',
+        package: pkg._id, group: grp._id, startDate: new Date('2026-06-01'), currentDebt: 0,
+      });
+      const snap = { _id: pkg._id, name: pkg.name, price: pkg.price, days: pkg.days };
+      await Payment.create({
+        child: c1._id, amount: 100, paidAmount: 100,
+        paymentDate: new Date('2026-06-15'), serviceMonth: '2026-06',
+        remainingBefore: 100, remainingAfter: 0, packageSnapshot: snap, isActive: true,
+      });
+      await Payment.create({
+        child: c2._id, amount: 100, paidAmount: 100,
+        paymentDate: new Date('2026-06-15'), serviceMonth: '2026-06',
+        remainingBefore: 100, remainingAfter: 0, packageSnapshot: snap, isActive: true,
+      });
+
+      // Explicit date range covering 2026-06-15 (default daily is last 30 days, which includes 06-15 since today is 2026-06-23)
+      const res = await request(app).get('/api/reports/revenue?mode=daily');
+      expect(res.status).toBe(200);
+      expect(res.body.data).toHaveLength(1);
+      expect(res.body.data[0].period).toBe('2026-06-15');
+      expect(res.body.data[0].revenue).toBe(200);
+    });
+
+    it('returns separate rows for different days', async () => {
+      const pkg = await Package.create({ name: 'P', price: 100, days: 30, isActive: true });
+      const grp = await Group.create({ name: 'G10', departments: [], teachers: [], nannies: [], ageRange: '4-5', isActive: true });
+      const c = await Child.create({
+        firstName: 'D3', lastName: 'D3', birthDate: new Date('2020-01-01'),
+        phone1: '+994503030303',
+        username: `d3-${Date.now()}@t.com`, password: 'pass123',
+        package: pkg._id, group: grp._id, startDate: new Date('2026-06-01'), currentDebt: 0,
+      });
+      const snap = { _id: pkg._id, name: pkg.name, price: pkg.price, days: pkg.days };
+      await Payment.create({
+        child: c._id, amount: 100, paidAmount: 100,
+        paymentDate: new Date('2026-06-10'), serviceMonth: '2026-06',
+        remainingBefore: 100, remainingAfter: 0, packageSnapshot: snap, isActive: true,
+      });
+      await Payment.create({
+        child: c._id, amount: 100, paidAmount: 100,
+        paymentDate: new Date('2026-06-20'), serviceMonth: '2026-06',
+        remainingBefore: 100, remainingAfter: 0, packageSnapshot: snap, isActive: true,
+      });
+
+      // Explicit range covering both days (both are within 30 days of today 2026-06-23, but explicit is safer)
+      const res = await request(app).get(
+        '/api/reports/revenue?mode=daily&dateFrom=2026-06-01&dateTo=2026-06-30'
+      );
+      expect(res.status).toBe(200);
+      expect(res.body.data).toHaveLength(2);
+    });
+  });
 });
