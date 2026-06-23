@@ -319,4 +319,58 @@ describe('GET /api/reports/revenue', () => {
       expect(res.body.data).toHaveLength(2);
     });
   });
+
+  describe('validation', () => {
+    it('returns 400 for missing mode', async () => {
+      const res = await request(app).get('/api/reports/revenue');
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/mode/);
+    });
+
+    it('returns 400 for invalid mode', async () => {
+      const res = await request(app).get('/api/reports/revenue?mode=yearly');
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/mode/);
+    });
+
+    it('returns 400 when dateFrom > dateTo', async () => {
+      const res = await request(app).get(
+        '/api/reports/revenue?mode=monthly&dateFrom=2026-06-30&dateTo=2026-06-01'
+      );
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/Başlanğıc tarixi/);
+    });
+
+    it('returns 400 for invalid date format', async () => {
+      const res = await request(app).get(
+        '/api/reports/revenue?mode=monthly&dateFrom=not-a-date'
+      );
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/tarix formatı/);
+    });
+
+    it('returns 400 for monthly range > 365 days', async () => {
+      const res = await request(app).get(
+        '/api/reports/revenue?mode=monthly&dateFrom=2025-01-01&dateTo=2026-12-31'
+      );
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/12 ay/);
+    });
+
+    it('returns 400 for weekly range > 182 days', async () => {
+      const res = await request(app).get(
+        '/api/reports/revenue?mode=weekly&dateFrom=2025-06-01&dateTo=2026-06-01'
+      );
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/26 həftə/);
+    });
+
+    it('returns 400 for daily range > 365 days', async () => {
+      const res = await request(app).get(
+        '/api/reports/revenue?mode=daily&dateFrom=2025-01-01&dateTo=2026-06-01'
+      );
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/365 gün/);
+    });
+  });
 });
