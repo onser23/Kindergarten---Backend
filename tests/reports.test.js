@@ -403,3 +403,69 @@ describe('GET /api/reports/revenue', () => {
     });
   });
 });
+
+describe('GET /api/reports/revenue/export/csv', () => {
+  beforeAll(async () => await setup.connect());
+  afterAll(async () => await setup.close());
+  beforeEach(async () => await setup.clear());
+
+  it('returns CSV with UTF-8 BOM and headers', async () => {
+    const pkg = await Package.create({ name: 'Tam Günlük', price: 500, days: 30, isActive: true });
+    const grp = await Group.create({ name: 'G12', departments: [], teachers: [], nannies: [], ageRange: '2-3', isActive: true });
+    const c = await Child.create({
+      firstName: 'Cs', lastName: 'Cs', birthDate: new Date('2020-01-01'),
+      phone1: '+994505050505',
+      username: `cs-${Date.now()}@t.com`, password: 'pass123',
+      package: pkg._id, group: grp._id, startDate: new Date('2026-06-01'), currentDebt: 0,
+    });
+    const snap = { _id: pkg._id, name: pkg.name, price: pkg.price, days: pkg.days };
+    await Payment.create({
+      child: c._id, amount: 500, paidAmount: 500,
+      paymentDate: new Date('2026-06-15'), serviceMonth: '2026-06',
+      remainingBefore: 500, remainingAfter: 0, packageSnapshot: snap, isActive: true,
+    });
+
+    const res = await request(app).get('/api/reports/revenue/export/csv?mode=monthly');
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toMatch(/text\/csv/);
+    expect(res.text.charCodeAt(0)).toBe(0xFEFF);
+    expect(res.text).toMatch(/Paket ID,Paket Adı,Dövr,Cəm Gəlir/);
+    expect(res.text).toMatch(/Tam Günlük/);
+    expect(res.text).toMatch(/CƏM/);
+  });
+
+  it('sets Content-Disposition with mode in filename', async () => {
+    const res = await request(app).get('/api/reports/revenue/export/csv?mode=monthly');
+    expect(res.status).toBe(200);
+    expect(res.headers['content-disposition']).toMatch(/attachment.*revenue-monthly.*\.csv/);
+  });
+
+  it('applies same filter as list endpoint', async () => {
+    const pkg = await Package.create({ name: 'P', price: 100, days: 30, isActive: true });
+    const grp = await Group.create({ name: 'G13', departments: [], teachers: [], nannies: [], ageRange: '3-4', isActive: true });
+    const c = await Child.create({
+      firstName: 'Cf', lastName: 'Cf', birthDate: new Date('2020-01-01'),
+      phone1: '+994506060606',
+      username: `cf-${Date.now()}@t.com`, password: 'pass123',
+      package: pkg._id, group: grp._id, startDate: new Date('2026-01-01'), currentDebt: 0,
+    });
+    const snap = { _id: pkg._id, name: pkg.name, price: pkg.price, days: pkg.days };
+    await Payment.create({
+      child: c._id, amount: 100, paidAmount: 100,
+      paymentDate: new Date('2026-06-15'), serviceMonth: '2026-06',
+      remainingBefore: 100, remainingAfter: 0, packageSnapshot: snap, isActive: true,
+    });
+    await Payment.create({
+      child: c._id, amount: 100, paidAmount: 100,
+      paymentDate: new Date('2026-05-15'), serviceMonth: '2026-05',
+      remainingBefore: 100, remainingAfter: 0, packageSnapshot: snap, isActive: true,
+    });
+
+    const res = await request(app).get(
+      '/api/reports/revenue/export/csv?mode=monthly&dateFrom=2026-06-01&dateTo=2026-06-30'
+    );
+    expect(res.status).toBe(200);
+    expect(res.text).toMatch(/2026-06/);
+    expect(res.text).not.toMatch(/2026-05/);
+  });
+});

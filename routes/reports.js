@@ -127,4 +127,87 @@ router.get('/revenue', async (req, res) => {
   }
 });
 
+router.get('/revenue/export/csv', async (req, res) => {
+  try {
+    const mode = req.query.mode;
+    if (!VALID_MODES.includes(mode)) {
+      return res.status(400).json({ success: false, message: 'Düzgün mode daxil edin (monthly, weekly, daily)' });
+    }
+
+    const defaults = defaultDates(mode);
+    const dateFrom = req.query.dateFrom ? parseDate(req.query.dateFrom) : defaults.dateFrom;
+    const dateTo = req.query.dateTo ? parseDate(req.query.dateTo, true) : defaults.dateTo;
+
+    if (!dateFrom || !dateTo) {
+      return res.status(400).json({ success: false, message: 'Düzgün tarix formatı daxil edin (YYYY-MM-DD)' });
+    }
+    if (dateFrom > dateTo) {
+      return res.status(400).json({ success: false, message: 'Başlanğıc tarixi bitmə tarixindən böyük ola bilməz' });
+    }
+
+    const maxDays = MAX_RANGE[mode].days;
+    const rangeDays = Math.ceil((dateTo - dateFrom) / 86400000);
+    if (rangeDays > maxDays) {
+      return res.status(400).json({
+        success: false,
+        message: `${mode.charAt(0).toUpperCase() + mode.slice(1)} rejimdə maksimum ${MAX_RANGE[mode].label} aralığı seçilə bilər`,
+      });
+    }
+
+    const aggregation = [
+      {
+        $match: {
+          paymentDate: { $gte: dateFrom, $lte: dateTo },
+          isActive: true,
+          'packageSnapshot._id': { $exists: true, $ne: null },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            packageId: '$packageSnapshot._id',
+            packageName: '$packageSnapshot.name',
+            period: { $dateToString: { format: buildPeriodFormat(mode), date: '$paymentDate' } },
+          },
+          revenue: { $sum: '$paidAmount' },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          packageId: '$_id.packageId',
+          packageName: '$_id.packageName',
+          period: '$_id.period',
+          revenue: 1,
+        },
+      },
+      { $sort: { period: -1, packageName: 1 } },
+    ];
+
+    const data = await Payment.aggregate(aggregation);
+    const totalRevenue = data.reduce((sum, row) => sum + row.revenue, 0);
+
+    const BOM = '\uFEFF';
+    const headers = ['Paket ID', 'Paket Adı', 'Dövr', 'Cəm Gəlir (₼)'];
+    const rows = data.map((row) => [
+      row.packageId,
+      `"${row.packageName.replace(/"/g, '""')}"`,
+      row.period,
+      row.revenue.toFixed(2),
+    ].join(','));
+    const totalRow = ['CƏM', '', '', totalRevenue.toFixed(2)].join(',');
+
+    const csv = BOM + [headers.join(','), ...rows, totalRow].join('\n');
+    const today = new Date().toISOString().split('T')[0];
+    const filename = `revenue-${mode}-${today}.csv`;
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(csv);
+  } catch (err) {
+    console.error('Revenue CSV error:', err);
+    res.status(500).json({ success: false, message: 'CSV export uğursuz oldu', error: err.message });
+  }
+});
+
 module.exports = router;
