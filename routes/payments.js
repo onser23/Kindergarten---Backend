@@ -205,7 +205,7 @@ router.get('/', async (req, res) => {
         Payment.find(query)
           .populate({
             path: 'child',
-            select: 'firstName lastName fatherName motherName startDate package group currentDebt',
+            select: 'firstName lastName fatherName motherName startDate package group currentDebt isActive',
             populate: [
               { path: 'package', select: 'name price' },
               { path: 'group', select: 'name' }
@@ -294,7 +294,7 @@ router.get('/:id', async (req, res) => {
     const payment = await Payment.findById(req.params.id)
       .populate({
         path: 'child',
-        select: 'firstName lastName fatherName motherName startDate package currentDebt',
+        select: 'firstName lastName fatherName motherName startDate package currentDebt isActive',
         populate: [
           { path: 'package', select: 'name price' }
         ]
@@ -418,7 +418,7 @@ router.post('/', [
     const populatedPayment = await Payment.findById(payment[0]._id)
       .populate({
         path: 'child',
-        select: 'firstName lastName fatherName motherName startDate package',
+        select: 'firstName lastName fatherName motherName startDate package isActive',
         populate: [{ path: 'package', select: 'name price' }]
       });
 
@@ -545,7 +545,7 @@ router.put('/:id', [
     const populatedPayment = await Payment.findById(oldPayment._id)
       .populate({
         path: 'child',
-        select: 'firstName lastName fatherName motherName startDate package',
+        select: 'firstName lastName fatherName motherName startDate package isActive',
         populate: [{ path: 'package', select: 'name price' }]
       });
 
@@ -645,7 +645,7 @@ router.get('/export/csv', async (req, res) => {
       const payments = await Payment.find(q)
         .populate({
           path: 'child',
-          select: 'firstName lastName fatherName motherName startDate package currentDebt',
+          select: 'firstName lastName fatherName motherName startDate package currentDebt isActive',
           populate: [{ path: 'package', select: 'name' }]
         })
         .sort({ paymentDate: -1 });
