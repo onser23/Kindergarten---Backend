@@ -468,4 +468,30 @@ describe('GET /api/reports/revenue/export/csv', () => {
     expect(res.text).toMatch(/2026-06/);
     expect(res.text).not.toMatch(/2026-05/);
   });
+
+  it('returns 400 for invalid mode on CSV', async () => {
+    const res = await request(app).get('/api/reports/revenue/export/csv?mode=yearly');
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when dateFrom > dateTo on CSV', async () => {
+    const res = await request(app).get(
+      '/api/reports/revenue/export/csv?mode=monthly&dateFrom=2026-06-30&dateTo=2026-06-01'
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 for range > 12 months on CSV monthly', async () => {
+    const res = await request(app).get(
+      '/api/reports/revenue/export/csv?mode=monthly&dateFrom=2025-01-01&dateTo=2026-12-31'
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 for invalid date format on CSV', async () => {
+    const res = await request(app).get(
+      '/api/reports/revenue/export/csv?mode=monthly&dateFrom=not-a-date'
+    );
+    expect(res.status).toBe(400);
+  });
 });

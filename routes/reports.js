@@ -53,73 +53,83 @@ function buildPeriodFormat(mode) {
   return '%Y-%m-%d';
 }
 
+async function runRevenueQuery(query, res) {
+  const mode = query.mode;
+  if (!VALID_MODES.includes(mode)) {
+    res.status(400).json({ success: false, message: 'Düzgün mode daxil edin (monthly, weekly, daily)' });
+    return null;
+  }
+
+  const defaults = defaultDates(mode);
+  const dateFrom = query.dateFrom ? parseDate(query.dateFrom) : defaults.dateFrom;
+  const dateTo = query.dateTo ? parseDate(query.dateTo, true) : defaults.dateTo;
+
+  if (!dateFrom || !dateTo) {
+    res.status(400).json({ success: false, message: 'Düzgün tarix formatı daxil edin (YYYY-MM-DD)' });
+    return null;
+  }
+  if (dateFrom > dateTo) {
+    res.status(400).json({ success: false, message: 'Başlanğıc tarixi bitmə tarixindən böyük ola bilməz' });
+    return null;
+  }
+
+  const maxDays = MAX_RANGE[mode].days;
+  const rangeDays = Math.ceil((dateTo - dateFrom) / 86400000);
+  if (rangeDays > maxDays) {
+    res.status(400).json({
+      success: false,
+      message: `${mode.charAt(0).toUpperCase() + mode.slice(1)} rejimdə maksimum ${MAX_RANGE[mode].label} aralığı seçilə bilər`,
+    });
+    return null;
+  }
+
+  const aggregation = [
+    {
+      $match: {
+        paymentDate: { $gte: dateFrom, $lte: dateTo },
+        isActive: true,
+        'packageSnapshot._id': { $exists: true, $ne: null },
+      },
+    },
+    {
+      $group: {
+        _id: {
+          packageId: '$packageSnapshot._id',
+          packageName: '$packageSnapshot.name',
+          period: { $dateToString: { format: buildPeriodFormat(mode), date: '$paymentDate' } },
+        },
+        revenue: { $sum: '$paidAmount' },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        packageId: '$_id.packageId',
+        packageName: '$_id.packageName',
+        period: '$_id.period',
+        revenue: 1,
+      },
+    },
+    { $sort: { period: -1, packageName: 1 } },
+  ];
+
+  const data = await Payment.aggregate(aggregation);
+  const totalRevenue = data.reduce((sum, row) => sum + row.revenue, 0);
+
+  return { data, totalRevenue, mode, dateFrom, dateTo };
+}
+
 router.get('/revenue', async (req, res) => {
   try {
-    const mode = req.query.mode;
-    if (!VALID_MODES.includes(mode)) {
-      return res.status(400).json({ success: false, message: 'Düzgün mode daxil edin (monthly, weekly, daily)' });
-    }
-
-    const defaults = defaultDates(mode);
-    const dateFrom = req.query.dateFrom ? parseDate(req.query.dateFrom) : defaults.dateFrom;
-    const dateTo = req.query.dateTo ? parseDate(req.query.dateTo, true) : defaults.dateTo;
-
-    if (!dateFrom || !dateTo) {
-      return res.status(400).json({ success: false, message: 'Düzgün tarix formatı daxil edin (YYYY-MM-DD)' });
-    }
-    if (dateFrom > dateTo) {
-      return res.status(400).json({ success: false, message: 'Başlanğıc tarixi bitmə tarixindən böyük ola bilməz' });
-    }
-
-    const maxDays = MAX_RANGE[mode].days;
-    const rangeDays = Math.ceil((dateTo - dateFrom) / 86400000);
-    if (rangeDays > maxDays) {
-      return res.status(400).json({
-        success: false,
-        message: `${mode.charAt(0).toUpperCase() + mode.slice(1)} rejimdə maksimum ${MAX_RANGE[mode].label} aralığı seçilə bilər`,
-      });
-    }
-
-    const aggregation = [
-      {
-        $match: {
-          paymentDate: { $gte: dateFrom, $lte: dateTo },
-          isActive: true,
-          'packageSnapshot._id': { $exists: true, $ne: null },
-        },
-      },
-      {
-        $group: {
-          _id: {
-            packageId: '$packageSnapshot._id',
-            packageName: '$packageSnapshot.name',
-            period: { $dateToString: { format: buildPeriodFormat(mode), date: '$paymentDate' } },
-          },
-          revenue: { $sum: '$paidAmount' },
-        },
-      },
-      {
-        $project: {
-          _id: 0,
-          packageId: '$_id.packageId',
-          packageName: '$_id.packageName',
-          period: '$_id.period',
-          revenue: 1,
-        },
-      },
-      { $sort: { period: -1, packageName: 1 } },
-    ];
-
-    const data = await Payment.aggregate(aggregation);
-    const totalRevenue = data.reduce((sum, row) => sum + row.revenue, 0);
-
+    const result = await runRevenueQuery(req.query, res);
+    if (!result) return;
     res.json({
-      data,
-      totalRevenue,
-      totalRows: data.length,
-      mode,
-      dateFrom: dateFrom.toISOString(),
-      dateTo: dateTo.toISOString(),
+      data: result.data,
+      totalRevenue: result.totalRevenue,
+      totalRows: result.data.length,
+      mode: result.mode,
+      dateFrom: result.dateFrom.toISOString(),
+      dateTo: result.dateTo.toISOString(),
     });
   } catch (err) {
     console.error('Revenue aggregation error:', err);
@@ -129,63 +139,9 @@ router.get('/revenue', async (req, res) => {
 
 router.get('/revenue/export/csv', async (req, res) => {
   try {
-    const mode = req.query.mode;
-    if (!VALID_MODES.includes(mode)) {
-      return res.status(400).json({ success: false, message: 'Düzgün mode daxil edin (monthly, weekly, daily)' });
-    }
-
-    const defaults = defaultDates(mode);
-    const dateFrom = req.query.dateFrom ? parseDate(req.query.dateFrom) : defaults.dateFrom;
-    const dateTo = req.query.dateTo ? parseDate(req.query.dateTo, true) : defaults.dateTo;
-
-    if (!dateFrom || !dateTo) {
-      return res.status(400).json({ success: false, message: 'Düzgün tarix formatı daxil edin (YYYY-MM-DD)' });
-    }
-    if (dateFrom > dateTo) {
-      return res.status(400).json({ success: false, message: 'Başlanğıc tarixi bitmə tarixindən böyük ola bilməz' });
-    }
-
-    const maxDays = MAX_RANGE[mode].days;
-    const rangeDays = Math.ceil((dateTo - dateFrom) / 86400000);
-    if (rangeDays > maxDays) {
-      return res.status(400).json({
-        success: false,
-        message: `${mode.charAt(0).toUpperCase() + mode.slice(1)} rejimdə maksimum ${MAX_RANGE[mode].label} aralığı seçilə bilər`,
-      });
-    }
-
-    const aggregation = [
-      {
-        $match: {
-          paymentDate: { $gte: dateFrom, $lte: dateTo },
-          isActive: true,
-          'packageSnapshot._id': { $exists: true, $ne: null },
-        },
-      },
-      {
-        $group: {
-          _id: {
-            packageId: '$packageSnapshot._id',
-            packageName: '$packageSnapshot.name',
-            period: { $dateToString: { format: buildPeriodFormat(mode), date: '$paymentDate' } },
-          },
-          revenue: { $sum: '$paidAmount' },
-        },
-      },
-      {
-        $project: {
-          _id: 0,
-          packageId: '$_id.packageId',
-          packageName: '$_id.packageName',
-          period: '$_id.period',
-          revenue: 1,
-        },
-      },
-      { $sort: { period: -1, packageName: 1 } },
-    ];
-
-    const data = await Payment.aggregate(aggregation);
-    const totalRevenue = data.reduce((sum, row) => sum + row.revenue, 0);
+    const result = await runRevenueQuery(req.query, res);
+    if (!result) return;
+    const { data, totalRevenue, mode } = result;
 
     const BOM = '\uFEFF';
     const headers = ['Paket ID', 'Paket Adı', 'Dövr', 'Cəm Gəlir (₼)'];
