@@ -192,4 +192,65 @@ describe('GET /api/reports/revenue', () => {
       expect(res.body.data).toHaveLength(0);
     });
   });
+
+  describe('weekly mode', () => {
+    it('groups two payments in same ISO week', async () => {
+      const pkg = await Package.create({ name: 'P', price: 100, days: 30, isActive: true });
+      const grp = await Group.create({ name: 'G7', departments: [], teachers: [], nannies: [], ageRange: '3-4', isActive: true });
+      const c = await Child.create({
+        firstName: 'W1', lastName: 'W1', birthDate: new Date('2020-01-01'),
+        phone1: '+994508888888',
+        username: `w1-${Date.now()}@t.com`, password: 'pass123',
+        package: pkg._id, group: grp._id, startDate: new Date('2026-06-01'), currentDebt: 0,
+      });
+      const snap = { _id: pkg._id, name: pkg.name, price: pkg.price, days: pkg.days };
+      // Same ISO week (2026-06-15 Mon → 2026-06-21 Sun = W25)
+      await Payment.create({
+        child: c._id, amount: 100, paidAmount: 100,
+        paymentDate: new Date('2026-06-15'), serviceMonth: '2026-06',
+        remainingBefore: 100, remainingAfter: 0, packageSnapshot: snap, isActive: true,
+      });
+      await Payment.create({
+        child: c._id, amount: 100, paidAmount: 100,
+        paymentDate: new Date('2026-06-19'), serviceMonth: '2026-06',
+        remainingBefore: 100, remainingAfter: 0, packageSnapshot: snap, isActive: true,
+      });
+
+      const res = await request(app).get('/api/reports/revenue?mode=weekly&dateFrom=2026-06-15&dateTo=2026-06-21');
+      expect(res.status).toBe(200);
+      expect(res.body.data).toHaveLength(1);
+      expect(res.body.data[0].revenue).toBe(200);
+      expect(res.body.data[0].period).toMatch(/^\d{4}-W\d{2}$/);
+    });
+
+    it('separates payments in different ISO weeks', async () => {
+      const pkg = await Package.create({ name: 'P', price: 100, days: 30, isActive: true });
+      const grp = await Group.create({ name: 'G8', departments: [], teachers: [], nannies: [], ageRange: '4-5', isActive: true });
+      const c = await Child.create({
+        firstName: 'W2', lastName: 'W2', birthDate: new Date('2020-01-01'),
+        phone1: '+994509999999',
+        username: `w2-${Date.now()}@t.com`, password: 'pass123',
+        package: pkg._id, group: grp._id, startDate: new Date('2026-06-01'), currentDebt: 0,
+      });
+      const snap = { _id: pkg._id, name: pkg.name, price: pkg.price, days: pkg.days };
+      // Different weeks — 2026-06-08 (week 24) vs 2026-06-22 (week 26)
+      await Payment.create({
+        child: c._id, amount: 100, paidAmount: 100,
+        paymentDate: new Date('2026-06-08'), serviceMonth: '2026-06',
+        remainingBefore: 100, remainingAfter: 0, packageSnapshot: snap, isActive: true,
+      });
+      await Payment.create({
+        child: c._id, amount: 100, paidAmount: 100,
+        paymentDate: new Date('2026-06-22'), serviceMonth: '2026-06',
+        remainingBefore: 100, remainingAfter: 0, packageSnapshot: snap, isActive: true,
+      });
+
+      // Explicit date range covering both weeks (default weekly range is current week only)
+      const res = await request(app).get(
+        '/api/reports/revenue?mode=weekly&dateFrom=2026-06-01&dateTo=2026-06-30'
+      );
+      expect(res.status).toBe(200);
+      expect(res.body.data).toHaveLength(2);
+    });
+  });
 });
