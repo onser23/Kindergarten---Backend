@@ -191,6 +191,35 @@ describe('GET /api/reports/revenue', () => {
       expect(res.status).toBe(200);
       expect(res.body.data).toHaveLength(0);
     });
+
+    it('does NOT subtract refunds from revenue', async () => {
+      const pkg = await Package.create({ name: 'P', price: 500, days: 30, isActive: true });
+      const grp = await Group.create({ name: 'G11', departments: [], teachers: [], nannies: [], ageRange: '2-3', isActive: true });
+      const c = await Child.create({
+        firstName: 'Rf', lastName: 'Rf', birthDate: new Date('2020-01-01'),
+        phone1: '+994504040404',
+        username: `rf-${Date.now()}@t.com`, password: 'pass123',
+        package: pkg._id, group: grp._id, startDate: new Date('2026-06-01'), currentDebt: 0,
+      });
+      const snap = { _id: pkg._id, name: pkg.name, price: pkg.price, days: pkg.days };
+      const payment = await Payment.create({
+        child: c._id, amount: 500, paidAmount: 500,
+        paymentDate: new Date('2026-06-15'), serviceMonth: '2026-06',
+        remainingBefore: 500, remainingAfter: 0, packageSnapshot: snap, isActive: true,
+      });
+      // Create a refund for this payment (full schema per Refund model — required: child, amount, reason, refundDate, createdBy)
+      await mongoose.model('Refund').create({
+        originalPayment: payment._id, child: c._id, amount: 200,
+        reason: 'Test refund for revenue', refundDate: new Date('2026-06-20'),
+        createdBy: new mongoose.Types.ObjectId(),
+      });
+
+      const res = await request(app).get('/api/reports/revenue?mode=monthly');
+      expect(res.status).toBe(200);
+      // Revenue is paidAmount (500), NOT paidAmount - refund (300)
+      // Refunds do not affect this aggregation (separate concept)
+      expect(res.body.data[0].revenue).toBe(500);
+    });
   });
 
   describe('weekly mode', () => {
