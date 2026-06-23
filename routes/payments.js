@@ -604,7 +604,6 @@ router.get('/export/csv', async (req, res) => {
     ];
 
     const rows = [];
-    let idx = 1;
 
     if (type === 'paid' || type === 'all') {
       const q = { isActive: true };
@@ -657,7 +656,7 @@ router.get('/export/csv', async (req, res) => {
         const pkgName = p.packageSnapshot?.name || c.package?.name || '';
         rows.push([
           'Ödənilib',
-          String(idx++).padStart(3, '0'),
+          p.displayId || '—',
           c.firstName || '', c.lastName || '', parents,
           c.package?.name || '',
           pkgName,
@@ -704,7 +703,7 @@ router.get('/export/csv', async (req, res) => {
         const parents = [child.fatherName, child.motherName].filter(Boolean).join(', ');
         rows.push([
           'Gözləyən',
-          String(idx++).padStart(3, '0'),
+          child.displayId || '—',
           child.firstName, child.lastName, parents,
           child.package?.name || '',
           '',

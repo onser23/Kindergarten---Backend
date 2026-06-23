@@ -71,4 +71,35 @@ describe('GET /api/payments/export/csv', () => {
     expect(res.status).toBe(200);
     expect(res.text).toMatch(/STATUS/);
   });
+
+  it('paid CSV row uses Payment.displayId instead of index counter', async () => {
+    const child = await seed();
+    const payment = await Payment.findOne({ child: child._id });
+    payment.displayId = 'P-CUSTOM-001';
+    await payment.save();
+    const res = await request(app).get('/api/payments/export/csv?type=paid');
+    expect(res.status).toBe(200);
+    expect(res.text).toMatch(/P-CUSTOM-001/);
+  });
+
+  it('pending CSV row uses Child.displayId instead of index counter', async () => {
+    const pkg = await Package.create({ name: 'Standart', price: 360, days: 30, isActive: true });
+    const grp = await Group.create({ name: 'Q1', departments: [], teachers: [], nannies: [], ageRange: '1-2', isActive: true });
+    const child = await Child.create({
+      firstName: 'Veli', lastName: 'Veliyev', birthDate: new Date('2020-01-01'),
+      phone1: '+994501111111',
+      username: `veli-csv-${Date.now()}-${Math.random()}@test.com`,
+      password: 'pass123',
+      package: pkg._id, group: grp._id, startDate: new Date('2026-03-10'),
+      currentDebt: 100, displayId: 'C-CUSTOM-001'
+    });
+    await Payment.create({
+      child: child._id, amount: 360, paidAmount: 360,
+      paymentDate: new Date('2026-03-15'), serviceMonth: '2026-03',
+      remainingBefore: 360, remainingAfter: 0, displayId: 'P-CUSTOM-001'
+    });
+    const res = await request(app).get('/api/payments/export/csv?type=pending');
+    expect(res.status).toBe(200);
+    expect(res.text).toMatch(/C-CUSTOM-001/);
+  });
 });
