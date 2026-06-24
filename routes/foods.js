@@ -21,6 +21,7 @@ router.get('/', async (req, res) => {
         $or: [
           { dryFood: searchRegex },
           { soup: searchRegex },
+          { salad: searchRegex },
           { drink: searchRegex },
           { dessert: searchRegex },
           { fruit: searchRegex },
@@ -52,6 +53,7 @@ router.get('/', async (req, res) => {
 router.post('/', [
   body('dryFood').optional().trim().isLength({ max: 200 }).withMessage('Quru yemək 200 simvoldan çox ola bilməz'),
   body('soup').optional().trim().isLength({ max: 200 }).withMessage('Sulu yemək 200 simvoldan çox ola bilməz'),
+  body('salad').optional().trim().isLength({ max: 200 }).withMessage('Salat 200 simvoldan çox ola bilməz'),
   body('drink').optional().trim().isLength({ max: 200 }).withMessage('İçki 200 simvoldan çox ola bilməz'),
   body('dessert').optional().trim().isLength({ max: 200 }).withMessage('Şirniyyat 200 simvoldan çox ola bilməz'),
   body('fruit').optional().trim().isLength({ max: 200 }).withMessage('Meyvə 200 simvoldan çox ola bilməz'),
@@ -69,13 +71,14 @@ router.post('/', [
       });
     }
 
-    const { dryFood, soup, drink, dessert, fruit, days, time } = req.body;
+    const { dryFood, soup, salad, drink, dessert, fruit, days, time } = req.body;
 
     const displayId = await getNextDisplayId('Food');
 
     const food = await Food.create({
       dryFood: dryFood || '',
       soup: soup || '',
+      salad: salad || '',
       drink: drink || '',
       dessert: dessert || '',
       fruit: fruit || '',
@@ -105,6 +108,7 @@ router.post('/', [
 router.put('/:id', [
   body('dryFood').optional().trim().isLength({ max: 200 }).withMessage('Quru yemək 200 simvoldan çox ola bilməz'),
   body('soup').optional().trim().isLength({ max: 200 }).withMessage('Sulu yemək 200 simvoldan çox ola bilməz'),
+  body('salad').optional().trim().isLength({ max: 200 }).withMessage('Salat 200 simvoldan çox ola bilməz'),
   body('drink').optional().trim().isLength({ max: 200 }).withMessage('İçki 200 simvoldan çox ola bilməz'),
   body('dessert').optional().trim().isLength({ max: 200 }).withMessage('Şirniyyat 200 simvoldan çox ola bilməz'),
   body('fruit').optional().trim().isLength({ max: 200 }).withMessage('Meyvə 200 simvoldan çox ola bilməz'),
@@ -123,7 +127,7 @@ router.put('/:id', [
     }
 
     const updateData = {};
-    const fields = ['dryFood', 'soup', 'drink', 'dessert', 'fruit', 'days', 'time'];
+    const fields = ['dryFood', 'soup', 'salad', 'drink', 'dessert', 'fruit', 'days', 'time'];
     fields.forEach(field => {
       if (req.body[field] !== undefined) {
         updateData[field] = req.body[field];
