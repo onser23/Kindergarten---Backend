@@ -34,7 +34,7 @@ const app = express();
 app.use(express.json());
 app.use('/api/packages', packageRoutes);
 app.use('/api/services', serviceRoutes);
-app.use('/api/lessons', lessonRoutes);
+app.use('/api/activities', lessonRoutes);
 app.use('/api/foods', foodRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/groups', groupRoutes);
@@ -203,14 +203,14 @@ describe('PATCH /api/{entity}/:id/status — Universal Status Controller', () =>
     });
 
     test('Aktiv paketə daxil olan dərsi passiv et → 400 + usageCount', async () => {
-      const res = await request(app).patch(`/api/lessons/${les._id}/status`).send({ isActive: false });
+      const res = await request(app).patch(`/api/activities/${les._id}/status`).send({ isActive: false });
       expect(res.status).toBe(400);
       expect(res.body.usageCount).toBe(1);
     });
 
     test('Boş dərsi passiv et → 200', async () => {
       const emptyLes = await Lesson.create({ name: 'Empty', groups: [], days: ['Bazar ertəsi'], startTime: '11:00', duration: 60, teachers: [] });
-      const res = await request(app).patch(`/api/lessons/${emptyLes._id}/status`).send({ isActive: false });
+      const res = await request(app).patch(`/api/activities/${emptyLes._id}/status`).send({ isActive: false });
       expect(res.status).toBe(200);
     });
   });

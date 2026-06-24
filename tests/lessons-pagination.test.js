@@ -19,9 +19,9 @@ const lessonRoutes = require('../routes/lessons');
 
 const app = express();
 app.use(express.json());
-app.use('/api/lessons', lessonRoutes);
+app.use('/api/activities', lessonRoutes);
 
-describe('GET /api/lessons pagination', () => {
+describe('GET /api/activities pagination', () => {
   let group, teacher;
 
   beforeAll(async () => {
@@ -77,7 +77,7 @@ describe('GET /api/lessons pagination', () => {
 
   test('25 lessons: default page=1 limit=20 returns 20 + total=25', async () => {
     for (let i = 0; i < 25; i++) await makeLesson(i);
-    const res = await request(app).get('/api/lessons');
+    const res = await request(app).get('/api/activities');
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.data).toHaveLength(20);
@@ -88,7 +88,7 @@ describe('GET /api/lessons pagination', () => {
 
   test('page=2 returns 5 items', async () => {
     for (let i = 0; i < 25; i++) await makeLesson(i);
-    const res = await request(app).get('/api/lessons?page=2');
+    const res = await request(app).get('/api/activities?page=2');
     expect(res.status).toBe(200);
     expect(res.body.data).toHaveLength(5);
     expect(res.body.page).toBe(2);
@@ -97,7 +97,7 @@ describe('GET /api/lessons pagination', () => {
   test('search filter reduces total', async () => {
     for (let i = 0; i < 10; i++) await makeLesson(i);
     await makeLesson(99);
-    const res = await request(app).get('/api/lessons?search=Lesson99');
+    const res = await request(app).get('/api/activities?search=Lesson99');
     expect(res.status).toBe(200);
     expect(res.body.total).toBe(1);
     expect(res.body.data).toHaveLength(1);
@@ -105,7 +105,7 @@ describe('GET /api/lessons pagination', () => {
 
   test('empty result: search="zzz" returns data=[]', async () => {
     await makeLesson(1);
-    const res = await request(app).get('/api/lessons?search=zzz');
+    const res = await request(app).get('/api/activities?search=zzz');
     expect(res.status).toBe(200);
     expect(res.body.data).toEqual([]);
     expect(res.body.total).toBe(0);

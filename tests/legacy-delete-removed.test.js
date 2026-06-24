@@ -33,7 +33,7 @@ const app = express();
 app.use(express.json());
 app.use('/api/packages', packageRoutes);
 app.use('/api/services', serviceRoutes);
-app.use('/api/lessons', lessonRoutes);
+app.use('/api/activities', lessonRoutes);
 app.use('/api/foods', foodRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/groups', groupRoutes);
@@ -116,8 +116,8 @@ describe('Legacy DELETE endpoints removed (replaced by PATCH /:id/status)', () =
     expect(res.status).toBe(404);
   });
 
-  test('DELETE /api/lessons/:id returns 404', async () => {
-    const res = await request(app).delete(`/api/lessons/${entities.lesson._id}`);
+  test('DELETE /api/activities/:id returns 404', async () => {
+    const res = await request(app).delete(`/api/activities/${entities.lesson._id}`);
     expect(res.status).toBe(404);
   });
 
