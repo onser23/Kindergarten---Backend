@@ -13,6 +13,12 @@ const foodSchema = new mongoose.Schema({
     maxlength: [200, 'Sulu yemək 200 simvoldan çox ola bilməz'],
     default: ''
   },
+  salad: {
+    type: String,
+    trim: true,
+    maxlength: [200, 'Salat 200 simvoldan çox ola bilməz'],
+    default: ''
+  },
   drink: {
     type: String,
     trim: true,
@@ -69,6 +75,6 @@ foodSchema.pre('save', function(next) {
 });
 
 // Index for search
-foodSchema.index({ dryFood: 'text', soup: 'text', drink: 'text', dessert: 'text', fruit: 'text' });
+foodSchema.index({ dryFood: 'text', soup: 'text', salad: 'text', drink: 'text', dessert: 'text', fruit: 'text' });
 
 module.exports = mongoose.model('Food', foodSchema);
