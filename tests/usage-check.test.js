@@ -97,7 +97,7 @@ describe('Usage Check Functions (per entity)', () => {
   });
 
   test('food.usageCheck — always returns 0 (no usage)', async () => {
-    const food = await Food.create({ dryFood: 'A', soup: 'B', drink: 'C', dessert: 'D', fruit: 'E', days: ['Bazar ertəsi'], time: '12:00' });
+    const food = await Food.create({ dryFood: 'A', soup: 'B', salad: '', drink: 'C', dessert: 'D', fruit: 'E', days: ['Bazar ertəsi'], time: '12:00' });
     const result = await statusConfig.food.usageCheck(food._id);
     expect(result.count).toBe(0);
     expect(result.locations).toEqual([]);

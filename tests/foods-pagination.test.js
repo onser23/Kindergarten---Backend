@@ -35,6 +35,7 @@ describe('GET /api/foods pagination', () => {
     return Food.create({
       dryFood: `Dry${idx}`,
       soup: `Soup${idx}`,
+      salad: '',
       drink: `Drink${idx}`,
       dessert: `Dessert${idx}`,
       fruit: `Fruit${idx}`,

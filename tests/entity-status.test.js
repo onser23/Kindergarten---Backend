@@ -299,7 +299,7 @@ describe('PATCH /api/{entity}/:id/status — Universal Status Controller', () =>
 
   describe('Food', () => {
     test('Aktiv qidanı passiv et → 200 (usage yox)', async () => {
-      const food = await Food.create({ dryFood: 'A', soup: 'B', drink: 'C', dessert: 'D', fruit: 'E', days: ['Bazar ertəsi'], time: '12:00' });
+      const food = await Food.create({ dryFood: 'A', soup: 'B', salad: '', drink: 'C', dessert: 'D', fruit: 'E', days: ['Bazar ertəsi'], time: '12:00' });
       const res = await request(app).patch(`/api/foods/${food._id}/status`).send({ isActive: false });
       expect(res.status).toBe(200);
     });
