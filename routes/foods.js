@@ -28,18 +28,16 @@ router.get("/", async (req, res) => {
 
     if (search && search.trim()) {
       const searchRegex = new RegExp(search.trim(), "i");
-      query = {
-        $or: [
-          { dryFood: searchRegex },
-          { soup: searchRegex },
-          { salad: searchRegex },
-          { drink: searchRegex },
-          { dessert: searchRegex },
-          { fruit: searchRegex },
-          { time: searchRegex },
-          { days: searchRegex },
-        ],
-      };
+      query.$or = [
+        { dryFood: searchRegex },
+        { soup: searchRegex },
+        { salad: searchRegex },
+        { drink: searchRegex },
+        { dessert: searchRegex },
+        { fruit: searchRegex },
+        { time: searchRegex },
+        { days: searchRegex },
+      ];
     }
 
     const [total, foods] = await Promise.all([

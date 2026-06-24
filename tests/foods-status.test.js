@@ -98,4 +98,19 @@ describe('GET /api/foods — status filter', () => {
     expect(passiveRes.body.total).toBe(10);
     expect(passiveRes.body.totalPages).toBe(1);
   });
+
+  test('status=passive + search filters both correctly', async () => {
+    await makeFood(1, true);
+    await makeFood(2, false);
+    await makeFood(3, false);
+    const food4 = await makeFood(4, false);
+    food4.soup = 'Puree4';
+    await food4.save();
+    await makeFood(5, true);
+    const res = await request(app).get('/api/foods?status=passive&search=Soup');
+    expect(res.status).toBe(200);
+    expect(res.body.total).toBe(2);
+    expect(res.body.data).toHaveLength(2);
+    expect(res.body.data.every((f) => !f.isActive && f.soup.includes('Soup'))).toBe(true);
+  });
 });
