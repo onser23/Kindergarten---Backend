@@ -13,19 +13,25 @@ const { getNextDisplayId } = require('../utils/idGenerator');
 // @access  Private
 router.get('/', async (req, res) => {
   try {
-    const { search } = req.query;
+    const { search, status } = req.query;
     const { page, limit, skip } = parsePagination(req.query, 20);
     let query = {};
 
+    // Status filter (active|passive|all)
+    if (status === "active") {
+      query.isActive = true;
+    } else if (status === "passive") {
+      query.isActive = false;
+    }
+    // status === 'all' və ya undefined → filter tətbiq olunmur
+
     if (search && search.trim()) {
       const searchRegex = new RegExp(search.trim(), 'i');
-      query = {
-        $or: [
-          { name: searchRegex },
-          { ageRange: searchRegex },
-          { departments: searchRegex }
-        ]
-      };
+      query.$or = [
+        { name: searchRegex },
+        { ageRange: searchRegex },
+        { departments: searchRegex }
+      ];
     }
 
     const [total, groups] = await Promise.all([
