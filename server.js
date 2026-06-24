@@ -65,7 +65,7 @@ app.use("/api/teachers", require("./middleware/auth"), teacherRoutes);
 app.use("/api/groups", require("./middleware/auth"), groupRoutes);
 app.use("/api/events", require("./middleware/auth"), eventRoutes);
 app.use("/api/foods", require("./middleware/auth"), foodRoutes);
-app.use("/api/lessons", require("./middleware/auth"), lessonRoutes);
+app.use("/api/activities", require("./middleware/auth"), lessonRoutes);
 app.use("/api/services", require("./middleware/auth"), serviceRoutes);
 app.use("/api/packages", require("./middleware/auth"), packageRoutes);
 
