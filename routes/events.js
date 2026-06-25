@@ -36,7 +36,7 @@ router.get('/', async (req, res) => {
       Event.countDocuments(query),
       Event.find(query)
         .populate('groups', 'name')
-        .sort({ startDate: 1, startTime: 1 })
+        .sort({ displayId: -1, _id: -1 })
         .skip(skip)
         .limit(limit)
     ]);
