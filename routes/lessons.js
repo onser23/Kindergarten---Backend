@@ -13,7 +13,7 @@ const { getNextDisplayId } = require('../utils/idGenerator');
 // @access Private
 router.get('/', async (req, res) => {
   try {
-    const { search, status } = req.query;
+    const { search, status, groups, teachers } = req.query;
     const { page, limit, skip } = parsePagination(req.query, 20);
     let query = {};
 
@@ -24,6 +24,16 @@ router.get('/', async (req, res) => {
       query.isActive = false;
     }
     // 'all' və ya undefined → filter yoxdur
+
+    // Groups filter (multi-select OR semantics)
+    if (groups && (Array.isArray(groups) ? groups.length > 0 : true)) {
+      query.groups = { $in: Array.isArray(groups) ? groups : [groups] };
+    }
+
+    // Teachers filter (multi-select OR semantics)
+    if (teachers && (Array.isArray(teachers) ? teachers.length > 0 : true)) {
+      query.teachers = { $in: Array.isArray(teachers) ? teachers : [teachers] };
+    }
 
     if (search && search.trim()) {
       const searchRegex = new RegExp(search.trim(), 'i');
