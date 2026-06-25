@@ -35,7 +35,7 @@ router.get('/', async (req, res) => {
 
     const [total, nannies] = await Promise.all([
       Nanny.countDocuments(query),
-      Nanny.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit)
+      Nanny.find(query).sort({ displayId: -1, _id: -1 }).skip(skip).limit(limit)
     ]);
 
     res.json(buildPaginatedResponse(nannies, total, page, limit));
