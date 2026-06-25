@@ -34,7 +34,7 @@ router.get('/', async (req, res) => {
 
     const [total, teachers] = await Promise.all([
       Teacher.countDocuments(query),
-      Teacher.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit)
+      Teacher.find(query).sort({ displayId: -1, _id: -1 }).skip(skip).limit(limit)
     ]);
 
     res.json(buildPaginatedResponse(teachers, total, page, limit));
