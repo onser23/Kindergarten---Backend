@@ -39,7 +39,7 @@ router.get('/', async (req, res) => {
       Group.find(query)
         .populate('teachers', 'firstName lastName fatherName')
         .populate('nannies', 'firstName lastName fatherName')
-        .sort({ createdAt: -1 })
+        .sort({ displayId: -1, _id: -1 })
         .skip(skip)
         .limit(limit)
     ]);
