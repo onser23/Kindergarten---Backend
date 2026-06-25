@@ -34,7 +34,7 @@ router.get('/', async (req, res) => {
 
     const [total, services] = await Promise.all([
       Service.countDocuments(query),
-      Service.find(query).sort({ startTime: 1 }).skip(skip).limit(limit)
+      Service.find(query).sort({ displayId: -1, _id: -1 }).skip(skip).limit(limit)
     ]);
 
     res.json(buildPaginatedResponse(services, total, page, limit));
