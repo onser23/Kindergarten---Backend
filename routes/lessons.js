@@ -49,7 +49,7 @@ router.get('/', async (req, res) => {
       Lesson.find(query)
         .populate('groups', 'name')
         .populate('teachers', 'firstName lastName fatherName')
-        .sort({ startTime: 1 })
+        .sort({ displayId: -1, _id: -1 })
         .skip(skip)
         .limit(limit)
     ]);
