@@ -136,7 +136,7 @@ router.get('/preview', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const {
-      type, page = 1, limit = 15, search, sort = 'nextDue', order = 'asc',
+      type, page = 1, limit = 15, search, sort, order = 'asc',
       package: pkgFilter, group: grpFilter, debtMin, debtMax,
       dateFrom, dateTo, preset, serviceMonth
     } = req.query;
@@ -274,6 +274,17 @@ router.get('/', async (req, res) => {
           ? a.child.currentDebt - b.child.currentDebt
           : b.child.currentDebt - a.child.currentDebt;
       }
+      if (!sort || sort === 'displayId') {
+        // displayId desc, nulls at end
+        const aId = a.child.displayId || '';
+        const bId = b.child.displayId || '';
+        if (!aId && bId) return 1;
+        if (aId && !bId) return -1;
+        return bId.localeCompare(aId);
+      }
+      // legacy default: reason + nextDue
+      if (a.reason === 'debt' && b.reason !== 'debt') return -1;
+      if (a.reason !== 'debt' && b.reason === 'debt') return 1;
       return a.nextDue - b.nextDue;
     });
     const total = pending.length;
