@@ -197,9 +197,10 @@ router.get('/', async (req, res) => {
           query.child = { $in: ids };
         }
       }
-      let sortObj = { paymentDate: -1, createdAt: -1 };
+      let sortObj;
       if (sort === 'name') sortObj = { 'child.lastName': order === 'asc' ? 1 : -1 };
       else if (sort === 'amount') sortObj = { paidAmount: order === 'asc' ? 1 : -1 };
+      else sortObj = { displayId: -1, _id: -1 };
       const [total, payments] = await Promise.all([
         Payment.countDocuments(query),
         Payment.find(query)
