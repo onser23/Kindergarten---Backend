@@ -87,7 +87,7 @@ router.get('/', async (req, res) => {
       search, childId, dateFrom, dateTo,
       serviceMonth, minAmount, maxAmount,
       page = 1, limit = 15,
-      sort = 'refundDate', order = 'desc'
+      sort, order = 'desc'
     } = req.query;
 
     // childId validation
@@ -166,9 +166,10 @@ router.get('/', async (req, res) => {
       query.child = { $in: childIds };
     }
 
-    const sortObj = {};
-    if (sort === 'amount') sortObj.amount = order === 'desc' ? -1 : 1;
-    else sortObj.refundDate = order === 'desc' ? -1 : 1;
+    let sortObj;
+    if (sort === 'amount') sortObj = { amount: order === 'desc' ? -1 : 1 };
+    else if (sort === 'refundDate') sortObj = { refundDate: order === 'desc' ? -1 : 1 };
+    else sortObj = { displayId: -1, _id: -1 };
 
     const [total, refunds] = await Promise.all([
       Refund.countDocuments(query),
